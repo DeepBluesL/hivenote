@@ -20,42 +20,96 @@ public class NoteController {
 
     /**
      * 1. 获取笔记列表
-     * 前端参数: page, size, title, category
+     * 前端参数: page, size, keyword, category, sortBy
+     * keyword 同时搜索 title 和 summary
      */
     @GetMapping("/list")
     public Result<IPage<Note>> getList(@RequestParam(defaultValue = "1") int page,
                                        @RequestParam(defaultValue = "12") int size,
                                        String title,
-                                       String category) {
-        System.out.println("=== 查询笔记列表 ===");
-        System.out.println("页码: " + page);
-        System.out.println("每页数量: " + size);
-        System.out.println("标题关键词: " + title);
-        System.out.println("分类: " + category);
-        
-        // 构造分页对象
+                                       String keyword,
+                                       String category,
+                                       String school,
+                                       @RequestParam(defaultValue = "newest") String sortBy) {
         Page<Note> pageParam = new Page<>(page, size);
         
-        // 构造查询条件
         QueryWrapper<Note> qw = new QueryWrapper<>();
-        if (StrUtil.isNotBlank(title)) {
-            qw.like("title", title); // 模糊查询标题
+
+        // keyword 支持同时搜索标题、简介、上传者
+        String searchTerm = StrUtil.isNotBlank(keyword) ? keyword : title;
+        if (StrUtil.isNotBlank(searchTerm)) {
+            qw.and(w -> w.like("title", searchTerm)
+                    .or().like("summary", searchTerm)
+                    .or().like("create_by", searchTerm));
         }
         if (StrUtil.isNotBlank(category)) {
-            qw.eq("category", category); // 精确筛选分类
+            qw.eq("category", category);
         }
-        qw.eq("status", 1); // 只看审核通过的
-        qw.eq("del_flag", 0); // 未删除的
-        qw.orderByDesc("create_time"); // 按时间倒序
+        if (StrUtil.isNotBlank(school)) {
+            qw.eq("school", school);
+        }
+        qw.eq("status", 1);
+        qw.eq("del_flag", 0);
 
-        // 执行查询
+        switch (sortBy) {
+            case "popular":
+                qw.orderByDesc("view_count");
+                break;
+            case "downloads":
+                qw.orderByDesc("download_count");
+                break;
+            case "likes":
+                qw.orderByDesc("like_count");
+                break;
+            default:
+                qw.orderByDesc("create_time");
+                break;
+        }
+
         IPage<Note> result = noteService.page(pageParam, qw);
-        
-        System.out.println("查询结果数量: " + result.getRecords().size());
-        System.out.println("总记录数: " + result.getTotal());
-        System.out.println("==================");
-        
         return Result.success(result);
+    }
+
+    /**
+     * 热门笔记 (社区页面用)
+     */
+    @GetMapping("/hot")
+    public Result<java.util.List<Note>> getHotNotes(@RequestParam(defaultValue = "10") int limit) {
+        QueryWrapper<Note> qw = new QueryWrapper<>();
+        qw.eq("status", 1);
+        qw.eq("del_flag", 0);
+        qw.orderByDesc("view_count");
+        qw.last("LIMIT " + limit);
+        return Result.success(noteService.list(qw));
+    }
+
+    /**
+     * 最新笔记 (社区页面用)
+     */
+    @GetMapping("/latest")
+    public Result<java.util.List<Note>> getLatestNotes(@RequestParam(defaultValue = "10") int limit) {
+        QueryWrapper<Note> qw = new QueryWrapper<>();
+        qw.eq("status", 1);
+        qw.eq("del_flag", 0);
+        qw.orderByDesc("create_time");
+        qw.last("LIMIT " + limit);
+        return Result.success(noteService.list(qw));
+    }
+
+    /**
+     * 社区统计数据
+     */
+    @GetMapping("/stats")
+    public Result<java.util.Map<String, Object>> getStats() {
+        QueryWrapper<Note> qw = new QueryWrapper<>();
+        qw.eq("status", 1);
+        qw.eq("del_flag", 0);
+
+        long totalNotes = noteService.count(qw);
+
+        java.util.Map<String, Object> stats = new java.util.HashMap<>();
+        stats.put("totalNotes", totalNotes);
+        return Result.success(stats);
     }
 
     /**
@@ -121,11 +175,14 @@ public class NoteController {
         note.setId(cn.hutool.core.util.IdUtil.getSnowflakeNextIdStr());
         
         // 补全信息
-        note.setCreateBy(currentUser.getUsername()); // 存储用户名
+        note.setCreateBy(currentUser.getUsername());
+        if (note.getSchool() == null || note.getSchool().trim().isEmpty()) {
+            note.setSchool(currentUser.getSchool());
+        }
         note.setViewCount(0);
         note.setDownloadCount(0);
-        note.setStatus(0); // 默认待审核(0)，审核通过后改为1
-        note.setDelFlag(0); // 未删除
+        note.setStatus(0);
+        note.setDelFlag(0);
         note.setCreateTime(new java.util.Date());
 
         System.out.println("生成的笔记ID: " + note.getId());

@@ -24,6 +24,26 @@
             </el-select>
           </el-form-item>
 
+          <el-form-item label="所属学校（可选）">
+            <el-select
+              v-model="form.school"
+              placeholder="搜索并选择学校"
+              style="width: 100%"
+              filterable
+              remote
+              :remote-method="handleSchoolSearch"
+              clearable
+              :loading="schoolLoading"
+            >
+              <el-option
+                v-for="s in schoolOptions"
+                :key="s"
+                :label="s"
+                :value="s"
+              />
+            </el-select>
+          </el-form-item>
+
           <el-form-item label="笔记简介">
             <el-input v-model="form.summary" type="textarea" :rows="4" placeholder="简单介绍一下这份笔记包含的内容..." />
           </el-form-item>
@@ -59,22 +79,54 @@
 </template>
 
 <script setup>
-import { reactive, ref } from 'vue'
+import { reactive, ref, onMounted } from 'vue'
 import { UploadFilled } from '@element-plus/icons-vue'
 import NavBar from '../../components/NavBar.vue'
 import { ElMessage } from 'element-plus'
 import { useRouter } from 'vue-router'
 import { addNote } from '@/api/note'
+import { getSchoolList } from '@/api/school'
+import { getUserInfo as getStoredUserInfo } from '@/utils/auth'
 import request from '@/utils/request'
 
 const router = useRouter()
 const uploading = ref(false)
+const schoolLoading = ref(false)
+const schoolOptions = ref([])
+
 const form = reactive({
   title: '',
   category: '',
+  school: '',
   summary: '',
   file: null
 })
+
+const handleSchoolSearch = async (query) => {
+  if (!query) {
+    schoolOptions.value = []
+    return
+  }
+  schoolLoading.value = true
+  try {
+    const res = await getSchoolList(query)
+    if (res && res.success) {
+      schoolOptions.value = res.result || []
+    }
+  } catch (e) {
+    console.error('获取学校列表错误:', e)
+  } finally {
+    schoolLoading.value = false
+  }
+}
+
+const initSchool = () => {
+  const stored = getStoredUserInfo()
+  if (stored && stored.school) {
+    form.school = stored.school
+    schoolOptions.value = [stored.school]
+  }
+}
 
 // 上传文件到服务器
 const uploadFile = async (file) => {
@@ -151,6 +203,7 @@ const onSubmit = async () => {
     const noteData = {
       title: form.title,
       category: form.category,
+      school: form.school || '',
       summary: form.summary || '',
       fileUrl: fileRes.result.url
     }
@@ -174,6 +227,10 @@ const onSubmit = async () => {
     uploading.value = false
   }
 }
+
+onMounted(() => {
+  initSchool()
+})
 </script>
 
 <style scoped>

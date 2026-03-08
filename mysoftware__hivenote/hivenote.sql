@@ -2,7 +2,7 @@
 SQLyog Ultimate v12.09 (64 bit)
 MySQL - 8.0.25 : Database - hivenote
 *********************************************************************
-*/
+*/
 
 /*!40101 SET NAMES utf8 */;
 
@@ -114,6 +114,44 @@ CREATE TABLE `t_note` (
 /*Data for the table `t_note` */
 
 insert  into `t_note`(`id`,`title`,`category`,`summary`,`file_url`,`view_count`,`download_count`,`status`,`create_by`,`create_time`,`update_by`,`update_time`,`del_flag`) values ('1','HiveNote开发实战手册','SE','这是一份关于如何开发HiveNote的后端指南','http://localhost:8080/file/test.pdf',1030,68,1,'admin','2025-12-10 10:04:15',NULL,NULL,0),('1998613851481767936','测试','CS','','http://localhost:8080/zwz/file/view/20251210_27e5941d2dfa4710a89ca5a18cae638c.png',13,4,1,'user','2025-12-10 12:40:49','user','2025-12-10 16:10:55',1),('1998666886870405120','测试','CS','测试测试测试测试测试测试测试测试','http://localhost:8080/zwz/file/view/20251210_72c596c4c59d4fc6b791ccf6baaf0e2f.zip',13,1,1,'user','2025-12-10 16:11:34',NULL,NULL,0),('1998679106706690048','测试1','Math','测试1测试1测试1测试1测试1测试1测试1测试1测试1测试1测试1测试1测试1测试1','http://localhost:8080/zwz/file/view/20251210_e3ae82f366034e549434d88efb533d97.zip',2,1,1,'user','2025-12-10 17:00:07',NULL,NULL,0),('1998785602103013376','测试2','GE','测试2测试2测试2测试2测试2测试2测试2测试2测试2','http://localhost:8080/zwz/file/view/20251211_10f79f41fd014e969e4deadc4d23fa6f.mp4',1,0,2,'user','2025-12-11 00:03:18','admin','2025-12-11 00:03:53',0),('1998786352925372416','测试3','GE','测试3测试3测试3测试3测试3','http://localhost:8080/zwz/file/view/20251211_f7701ad4ffa14ff498719e96b4bcc99e.mp4',0,0,1,'user','2025-12-11 00:06:17','admin','2025-12-11 00:06:45',0),('1998786603719585792','测试4','Math','测试4测试4测试4测试4测试4','http://localhost:8080/zwz/file/view/20251211_ce78b4ae3ec64676949533cc9688b78d.mp4',0,0,0,'user','2025-12-11 00:07:17',NULL,NULL,0);
+
+/*Table structure for table `t_favorite` */
+
+DROP TABLE IF EXISTS `t_favorite`;
+
+CREATE TABLE `t_favorite` (
+  `id` varchar(32) NOT NULL COMMENT '收藏ID',
+  `note_id` varchar(32) NOT NULL COMMENT '笔记ID',
+  `username` varchar(255) NOT NULL COMMENT '用户名',
+  `create_time` datetime DEFAULT NULL COMMENT '收藏时间',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_user_note` (`username`, `note_id`),
+  KEY `idx_username` (`username`),
+  KEY `idx_note_id` (`note_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='收藏表';
+
+/*Table structure for table `t_like` */
+
+DROP TABLE IF EXISTS `t_like`;
+
+CREATE TABLE `t_like` (
+  `id` varchar(32) NOT NULL COMMENT '点赞ID',
+  `note_id` varchar(32) NOT NULL COMMENT '笔记ID',
+  `username` varchar(255) NOT NULL COMMENT '用户名',
+  `create_time` datetime DEFAULT NULL COMMENT '点赞时间',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_user_note` (`username`, `note_id`),
+  KEY `idx_username` (`username`),
+  KEY `idx_note_id` (`note_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='点赞表';
+
+/* Add like_count and favorite_count to t_note */
+ALTER TABLE `t_note` ADD COLUMN `like_count` int DEFAULT 0 COMMENT '点赞数' AFTER `download_count`;
+ALTER TABLE `t_note` ADD COLUMN `favorite_count` int DEFAULT 0 COMMENT '收藏数' AFTER `like_count`;
+
+/* Add parent_id to t_comment for nested replies */
+ALTER TABLE `t_comment` ADD COLUMN `parent_id` varchar(32) DEFAULT NULL COMMENT '父评论ID(回复功能)' AFTER `note_id`;
+ALTER TABLE `t_comment` ADD COLUMN `reply_to` varchar(255) DEFAULT NULL COMMENT '回复目标用户名' AFTER `parent_id`;
 
 /*!40101 SET SQL_MODE=@OLD_SQL_MODE */;
 /*!40014 SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS */;

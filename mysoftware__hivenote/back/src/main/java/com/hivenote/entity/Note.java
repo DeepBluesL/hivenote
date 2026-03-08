@@ -50,6 +50,11 @@ public class Note implements Serializable {
     private String createBy;
 
     /**
+     * 上传者所属学校
+     */
+    private String school;
+
+    /**
      * 浏览量
      */
     private Integer viewCount;
@@ -58,6 +63,16 @@ public class Note implements Serializable {
      * 下载量
      */
     private Integer downloadCount;
+
+    /**
+     * 点赞数
+     */
+    private Integer likeCount;
+
+    /**
+     * 收藏数
+     */
+    private Integer favoriteCount;
 
     /**
      * 状态 (1:正常 0:审核中)

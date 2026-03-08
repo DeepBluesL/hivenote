@@ -92,3 +92,35 @@ export const rejectNote = (id) => {
     method: 'post'
   })
 }
+
+/**
+ * 9. 获取热门笔记
+ */
+export const getHotNotes = (limit = 10) => {
+  return request({
+    url: '/note/hot',
+    method: 'get',
+    params: { limit }
+  })
+}
+
+/**
+ * 10. 获取最新笔记
+ */
+export const getLatestNotes = (limit = 10) => {
+  return request({
+    url: '/note/latest',
+    method: 'get',
+    params: { limit }
+  })
+}
+
+/**
+ * 11. 获取社区统计
+ */
+export const getNoteStats = () => {
+  return request({
+    url: '/note/stats',
+    method: 'get'
+  })
+}

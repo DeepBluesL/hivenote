@@ -25,8 +25,12 @@ const routes = [
   {
     path: '/home',
     name: 'Home',
-    // 核心页面：笔记大厅，路径对应 src/views/note/NoteList.vue
     component: () => import('../views/note/NoteList.vue')
+  },
+  {
+    path: '/community',
+    name: 'Community',
+    component: () => import('../views/community/Community.vue')
   },
   {
     // 动态路由：:id 是参数，比如 /note/detail/123
@@ -73,7 +77,7 @@ router.beforeEach((to, from, next) => {
   const userInfo = userInfoStr ? JSON.parse(userInfoStr) : {}
   
   // 白名单：不需要登录就能访问的页面
-  const whiteList = ['/login', '/register', '/forgot-password', '/admin/login']
+  const whiteList = ['/login', '/register', '/forgot-password', '/admin/login', '/community']
   
   if (token) {
     // 已登录
