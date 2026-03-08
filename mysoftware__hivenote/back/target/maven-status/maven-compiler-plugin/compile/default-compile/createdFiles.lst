@@ -33,3 +33,4 @@ com\hivenote\controller\UserController.class
 com\hivenote\service\ICommentService.class
 com\hivenote\mapper\NoteLikeMapper.class
 com\hivenote\entity\User.class
+com\hivenote\controller\SchoolController.class

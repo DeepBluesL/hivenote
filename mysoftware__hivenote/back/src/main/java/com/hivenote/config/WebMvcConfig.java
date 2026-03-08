@@ -49,6 +49,7 @@ public class WebMvcConfig implements WebMvcConfigurer {
                         "/note/stats",       // 社区统计（公开）
                         "/comment/getAllByPage", // 评论列表（公开）
                         "/comment/recent",   // 最近评论（公开）
+                        "/school/**",        // 学校列表（公开）
                         "/error",            // 系统错误页
                         "/doc.html",         // Swagger文档 (如果有)
                         "/webjars/**",

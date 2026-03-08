@@ -70,6 +70,9 @@ public class UserController {
         userInfo.put("avatar", user.getAvatar());
         userInfo.put("status", user.getStatus());
         userInfo.put("type", user.getType() != null ? user.getType() : 0);
+        userInfo.put("school", user.getSchool());
+        userInfo.put("showEmail", user.getShowEmail() != null ? user.getShowEmail() : 1);
+        userInfo.put("showStudentId", user.getShowStudentId() != null ? user.getShowStudentId() : 1);
         userInfo.put("createTime", user.getCreateTime());
 
         resultMap.put("userInfo", userInfo);
@@ -215,7 +218,6 @@ public class UserController {
 
         User user = userService.getById(currentUser.getId());
 
-        // 只允许修改部分字段
         if (updateUser.getNickname() != null) {
             user.setNickname(updateUser.getNickname());
         }
@@ -224,6 +226,15 @@ public class UserController {
         }
         if (updateUser.getAvatar() != null) {
             user.setAvatar(updateUser.getAvatar());
+        }
+        if (updateUser.getSchool() != null) {
+            user.setSchool(updateUser.getSchool());
+        }
+        if (updateUser.getShowEmail() != null) {
+            user.setShowEmail(updateUser.getShowEmail());
+        }
+        if (updateUser.getShowStudentId() != null) {
+            user.setShowStudentId(updateUser.getShowStudentId());
         }
 
         userService.updateById(user);
@@ -309,6 +320,9 @@ public class UserController {
         userInfo.put("avatar", user.getAvatar());
         userInfo.put("status", user.getStatus());
         userInfo.put("type", user.getType());
+        userInfo.put("school", user.getSchool());
+        userInfo.put("showEmail", user.getShowEmail() != null ? user.getShowEmail() : 1);
+        userInfo.put("showStudentId", user.getShowStudentId() != null ? user.getShowStudentId() : 1);
 
         resultMap.put("userInfo", userInfo);
 

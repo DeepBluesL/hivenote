@@ -14,6 +14,7 @@ E:\Code\hivenote\mysoftware__hivenote\back\src\main\java\com\hivenote\entity\Com
 E:\Code\hivenote\mysoftware__hivenote\back\src\main\java\com\hivenote\HiveNoteApplication.java
 E:\Code\hivenote\mysoftware__hivenote\back\src\main\java\com\hivenote\controller\FavoriteController.java
 E:\Code\hivenote\mysoftware__hivenote\back\src\main\java\com\hivenote\service\INoteService.java
+E:\Code\hivenote\mysoftware__hivenote\back\src\main\java\com\hivenote\controller\SchoolController.java
 E:\Code\hivenote\mysoftware__hivenote\back\src\main\java\com\hivenote\entity\dto\LoginDTO.java
 E:\Code\hivenote\mysoftware__hivenote\back\src\main\java\com\hivenote\controller\CommentController.java
 E:\Code\hivenote\mysoftware__hivenote\back\src\main\java\com\hivenote\service\impl\UserServiceImpl.java

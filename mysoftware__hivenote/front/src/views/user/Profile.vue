@@ -21,27 +21,54 @@
             <h2>{{ userInfo.nickname || userInfo.username || '用户' }}</h2>
             <p class="role-badge">{{ userInfo.type === 1 ? '管理员' : '普通用户' }}</p>
             <p class="desc">
-              学号: {{ userInfo.username || '-' }} |
-              邮箱: {{ userInfo.email || '未设置' }}
+              <template v-if="userInfo.showStudentId !== 0">学号: {{ userInfo.username || '-' }} | </template>
+              <template v-if="userInfo.showEmail !== 0">邮箱: {{ userInfo.email || '未设置' }} | </template>
+              学校: {{ userInfo.school || '未设置' }}
             </p>
           </div>
         </div>
       </el-card>
 
       <!-- 编辑资料对话框 -->
-      <el-dialog v-model="showEditDialog" title="编辑个人资料" width="500px">
-        <el-form :model="editForm" :rules="editRules" ref="editFormRef" label-width="80px">
+      <el-dialog v-model="showEditDialog" title="编辑个人资料" width="550px">
+        <el-form :model="editForm" :rules="editRules" ref="editFormRef" label-width="100px">
           <el-form-item label="昵称" prop="nickname">
             <el-input v-model="editForm.nickname" placeholder="请输入昵称" />
           </el-form-item>
           <el-form-item label="邮箱" prop="email">
             <el-input v-model="editForm.email" placeholder="请输入邮箱" />
           </el-form-item>
+          <el-form-item label="所属学校">
+            <el-select
+              v-model="editForm.school"
+              placeholder="搜索并选择学校"
+              style="width: 100%"
+              filterable
+              remote
+              :remote-method="handleSchoolSearch"
+              clearable
+              :loading="schoolLoading"
+            >
+              <el-option
+                v-for="s in schoolOptions"
+                :key="s"
+                :label="s"
+                :value="s"
+              />
+            </el-select>
+          </el-form-item>
           <el-form-item label="头像URL" prop="avatar">
             <el-input v-model="editForm.avatar" placeholder="请输入头像URL" />
             <div class="avatar-preview" v-if="editForm.avatar">
               <el-avatar :size="60" :src="editForm.avatar" />
             </div>
+          </el-form-item>
+          <el-divider content-position="left">隐私设置</el-divider>
+          <el-form-item label="公开学号">
+            <el-switch v-model="editForm.showStudentId" :active-value="1" :inactive-value="0" active-text="公开" inactive-text="隐藏" />
+          </el-form-item>
+          <el-form-item label="公开邮箱">
+            <el-switch v-model="editForm.showEmail" :active-value="1" :inactive-value="0" active-text="公开" inactive-text="隐藏" />
           </el-form-item>
         </el-form>
         <template #footer>
@@ -131,6 +158,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { getUserInfo, updateUserProfile, changePassword } from '@/api/user'
 import { getUserInfo as getStoredUserInfo, setUserInfo as setStoredUserInfo } from '@/utils/auth'
 import { getMyFavorites } from '@/api/favorite'
+import { getSchoolList } from '@/api/school'
 import request from '@/utils/request'
 
 const router = useRouter()
@@ -145,7 +173,34 @@ const showEditDialog = ref(false)
 const showPasswordDialog = ref(false)
 const editFormRef = ref(null)
 const updating = ref(false)
-const editForm = ref({ nickname: '', email: '', avatar: '' })
+const schoolLoading = ref(false)
+const schoolOptions = ref([])
+const editForm = ref({
+  nickname: '',
+  email: '',
+  avatar: '',
+  school: '',
+  showEmail: 1,
+  showStudentId: 1
+})
+
+const handleSchoolSearch = async (query) => {
+  if (!query) {
+    schoolOptions.value = []
+    return
+  }
+  schoolLoading.value = true
+  try {
+    const res = await getSchoolList(query)
+    if (res && res.success) {
+      schoolOptions.value = res.result || []
+    }
+  } catch (e) {
+    console.error('获取学校列表错误:', e)
+  } finally {
+    schoolLoading.value = false
+  }
+}
 
 const editRules = {
   nickname: [{ required: true, message: '请输入昵称', trigger: 'blur' }],
@@ -175,25 +230,31 @@ const passwordRules = {
   confirmPassword: [{ validator: validateConfirmPassword, trigger: 'blur' }]
 }
 
+const populateEditForm = (info) => {
+  editForm.value = {
+    nickname: info.nickname || '',
+    email: info.email || '',
+    avatar: info.avatar || '',
+    school: info.school || '',
+    showEmail: info.showEmail != null ? info.showEmail : 1,
+    showStudentId: info.showStudentId != null ? info.showStudentId : 1
+  }
+  if (info.school) {
+    schoolOptions.value = [info.school]
+  }
+}
+
 const loadUserInfo = async () => {
   try {
     const storedInfo = getStoredUserInfo()
     if (storedInfo) {
       userInfo.value = storedInfo
-      editForm.value = {
-        nickname: storedInfo.nickname || '',
-        email: storedInfo.email || '',
-        avatar: storedInfo.avatar || ''
-      }
+      populateEditForm(storedInfo)
     }
     const res = await getUserInfo()
     if (res && res.success) {
       userInfo.value = res.result
-      editForm.value = {
-        nickname: res.result.nickname || '',
-        email: res.result.email || '',
-        avatar: res.result.avatar || ''
-      }
+      populateEditForm(res.result)
       setStoredUserInfo(res.result)
     }
   } catch (error) {

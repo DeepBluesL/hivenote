@@ -29,6 +29,7 @@ public class NoteController {
                                        String title,
                                        String keyword,
                                        String category,
+                                       String school,
                                        @RequestParam(defaultValue = "newest") String sortBy) {
         Page<Note> pageParam = new Page<>(page, size);
         
@@ -43,6 +44,9 @@ public class NoteController {
         }
         if (StrUtil.isNotBlank(category)) {
             qw.eq("category", category);
+        }
+        if (StrUtil.isNotBlank(school)) {
+            qw.eq("school", school);
         }
         qw.eq("status", 1);
         qw.eq("del_flag", 0);
@@ -171,11 +175,14 @@ public class NoteController {
         note.setId(cn.hutool.core.util.IdUtil.getSnowflakeNextIdStr());
         
         // 补全信息
-        note.setCreateBy(currentUser.getUsername()); // 存储用户名
+        note.setCreateBy(currentUser.getUsername());
+        if (note.getSchool() == null || note.getSchool().trim().isEmpty()) {
+            note.setSchool(currentUser.getSchool());
+        }
         note.setViewCount(0);
         note.setDownloadCount(0);
-        note.setStatus(0); // 默认待审核(0)，审核通过后改为1
-        note.setDelFlag(0); // 未删除
+        note.setStatus(0);
+        note.setDelFlag(0);
         note.setCreateTime(new java.util.Date());
 
         System.out.println("生成的笔记ID: " + note.getId());

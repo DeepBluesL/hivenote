@@ -50,6 +50,11 @@ public class Note implements Serializable {
     private String createBy;
 
     /**
+     * 上传者所属学校
+     */
+    private String school;
+
+    /**
      * 浏览量
      */
     private Integer viewCount;

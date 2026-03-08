@@ -61,6 +61,21 @@ public class User implements Serializable {
     private Integer status;
 
     /**
+     * 学校
+     */
+    private String school;
+
+    /**
+     * 是否公开展示邮箱 (0:不公开 1:公开，默认1)
+     */
+    private Integer showEmail;
+
+    /**
+     * 是否公开展示学号 (0:不公开 1:公开，默认1)
+     */
+    private Integer showStudentId;
+
+    /**
      * 注册时间
      * MyBatis-Plus 会自动将数据库的 create_time 映射为 createTime
      */

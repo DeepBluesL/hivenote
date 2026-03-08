@@ -41,6 +41,30 @@
             </span>
           </div>
 
+          <!-- 学校筛选 -->
+          <div class="school-wrap">
+            <el-select
+              v-model="queryParams.school"
+              placeholder="按学校筛选"
+              size="small"
+              style="width: 180px"
+              filterable
+              remote
+              :remote-method="handleSchoolSearch"
+              clearable
+              :loading="schoolLoading"
+              @change="handleSearch"
+              @clear="handleSearch"
+            >
+              <el-option
+                v-for="s in schoolOptions"
+                :key="s"
+                :label="s"
+                :value="s"
+              />
+            </el-select>
+          </div>
+
           <!-- 排序选项 -->
           <div class="sort-wrap">
             <el-select v-model="queryParams.sortBy" size="small" @change="handleSearch" style="width: 130px">
@@ -80,6 +104,7 @@
               <div class="author">
                 <el-avatar :size="20" style="background:#409EFF">{{ note.createBy?.charAt(0) || 'U' }}</el-avatar>
                 <span class="name">{{ note.createBy || '匿名' }}</span>
+                <el-tag v-if="note.school" size="small" type="info" class="school-tag">{{ note.school }}</el-tag>
               </div>
               <div class="stats">
                 <span>👍 {{ note.likeCount || 0 }}</span>
@@ -112,20 +137,42 @@ import { useRouter, useRoute } from 'vue-router'
 import { Search, Download, View } from '@element-plus/icons-vue'
 import NavBar from '../../components/NavBar.vue'
 import { getNoteList } from '../../api/note'
+import { getSchoolList } from '../../api/school'
 
 const router = useRouter()
 const route = useRoute()
 const loading = ref(false)
 const noteList = ref([])
 const total = ref(0)
+const schoolLoading = ref(false)
+const schoolOptions = ref([])
 
 const queryParams = reactive({
   page: 1,
   size: 12,
   keyword: '',
   category: '',
+  school: '',
   sortBy: 'newest'
 })
+
+const handleSchoolSearch = async (query) => {
+  if (!query) {
+    schoolOptions.value = []
+    return
+  }
+  schoolLoading.value = true
+  try {
+    const res = await getSchoolList(query)
+    if (res && res.success) {
+      schoolOptions.value = res.result || []
+    }
+  } catch (e) {
+    console.error('获取学校列表错误:', e)
+  } finally {
+    schoolLoading.value = false
+  }
+}
 
 const categoryOptions = ['CS', 'SE', 'Math', 'GE']
 
@@ -176,7 +223,7 @@ onMounted(() => {
 .filter-header { margin-bottom: 30px; }
 .search-wrap { max-width: 600px; margin: 0 auto 20px; }
 
-.filter-row { display: flex; justify-content: space-between; align-items: center; }
+.filter-row { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
 .category-tabs { display: flex; gap: 10px; flex-wrap: wrap; }
 .tab-item { padding: 6px 16px; background: #fff; border-radius: 20px; font-size: 14px; color: #606266; cursor: pointer; border: 1px solid #dcdfe6; transition: all 0.3s; }
 .tab-item:hover, .tab-item.active { background-color: #409EFF; color: #fff; border-color: #409EFF; }
@@ -191,5 +238,7 @@ onMounted(() => {
 .card-footer { border-top: 1px solid #f2f6fc; padding-top: 12px; display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: #909399; }
 .author { display: flex; align-items: center; gap: 6px; }
 .stats { display: flex; gap: 12px; }
+.school-tag { margin-left: 4px; max-width: 80px; overflow: hidden; text-overflow: ellipsis; }
+.school-wrap { flex-shrink: 0; }
 .pagination-wrap { margin-top: 40px; display: flex; justify-content: center; }
 </style>
