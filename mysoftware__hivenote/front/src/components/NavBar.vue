@@ -1,15 +1,15 @@
 <template>
   <div class="navbar-container">
     <div class="content-wrapper">
-      <!-- 左侧 Logo 区 (已修改为图片) -->
+      <!-- 左侧 Logo 区 -->
       <div class="logo-section" @click="$router.push('/home')">
-        <!-- 确保图片 nav-text-logo.png 已经放入 src/assets/ 目录下 -->
         <img src="@/assets/nav-text-logo.png" alt="MUST Note Share" class="logo-img" />
       </div>
 
       <!-- 中间 菜单区 -->
       <div class="menu-section">
         <router-link to="/home" class="nav-item" active-class="active">资源大厅</router-link>
+        <router-link to="/community" class="nav-item" active-class="active">学习社区</router-link>
         <router-link to="/note/upload" class="nav-item" active-class="active">上传笔记</router-link>
         <router-link to="/user/profile" class="nav-item" active-class="active">个人中心</router-link>
       </div>
@@ -18,8 +18,8 @@
       <div class="user-section">
         <el-dropdown trigger="click" @command="handleCommand">
           <span class="user-dropdown">
-            <el-avatar :size="32" class="avatar">{{ username.charAt(0).toUpperCase() }}</el-avatar>
-            <span class="username">{{ username }}</span>
+            <el-avatar :size="32" class="avatar" :src="userAvatar">{{ displayName.charAt(0).toUpperCase() }}</el-avatar>
+            <span class="username">{{ displayName }}</span>
             <el-icon class="el-icon--right"><ArrowDown /></el-icon>
           </span>
           <template #dropdown>
@@ -35,25 +35,40 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ArrowDown } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
+import { getUserInfo as getStoredUserInfo } from '@/utils/auth'
 
 const router = useRouter()
-// 暂时写死，实际开发中可以从 localStorage 或 Pinia/Vuex 中获取
-const username = ref('Admin')
+const userInfo = ref(null)
 
-// 处理下拉菜单点击
+const displayName = computed(() => {
+  if (userInfo.value) {
+    return userInfo.value.nickname || userInfo.value.username || '用户'
+  }
+  return '用户'
+})
+
+const userAvatar = computed(() => {
+  return userInfo.value?.avatar || ''
+})
+
 const handleCommand = (command) => {
   if (command === 'logout') {
     localStorage.removeItem('token')
+    localStorage.removeItem('userInfo')
     ElMessage.success('退出成功')
     router.push('/login')
   } else if (command === 'profile') {
     router.push('/user/profile')
   }
 }
+
+onMounted(() => {
+  userInfo.value = getStoredUserInfo()
+})
 </script>
 
 <style scoped>
@@ -76,32 +91,29 @@ const handleCommand = (command) => {
   padding: 0 20px;
 }
 
-/* Logo 样式修改 */
 .logo-section {
   cursor: pointer;
   display: flex;
   align-items: center;
   transition: opacity 0.3s;
-  height: 100%; /* 确保高度充满 */
+  height: 100%;
 }
 .logo-section:hover { opacity: 0.8; }
 
-/* 新增图片样式，限制高度，防止撑破导航栏 */
 .logo-img {
-  height: 36px; 
-  width: auto; /* 宽度自适应 */
+  height: 36px;
+  width: auto;
   display: block;
 }
 
-/* 菜单样式 */
 .menu-section {
   display: flex;
-  gap: 40px;
+  gap: 32px;
 }
 .nav-item {
   text-decoration: none;
   color: #606266;
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 500;
   position: relative;
   padding: 21px 0;
@@ -123,7 +135,6 @@ const handleCommand = (command) => {
   border-radius: 2px 2px 0 0;
 }
 
-/* 用户下拉区样式 */
 .user-dropdown {
   display: flex;
   align-items: center;

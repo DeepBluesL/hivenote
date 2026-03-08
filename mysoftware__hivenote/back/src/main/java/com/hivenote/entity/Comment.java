@@ -29,6 +29,16 @@ public class Comment implements Serializable {
     private String noteId;
 
     /**
+     * 父评论ID (回复功能)
+     */
+    private String parentId;
+
+    /**
+     * 回复目标用户名
+     */
+    private String replyTo;
+
+    /**
      * 评论内容
      */
     private String content;

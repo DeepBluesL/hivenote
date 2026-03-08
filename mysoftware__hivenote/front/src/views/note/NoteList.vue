@@ -1,18 +1,18 @@
 <template>
   <div class="page-container">
-    <!-- 引入顶部导航 -->
     <NavBar />
 
     <div class="main-content">
       <!-- 搜索与筛选区 -->
       <div class="filter-header">
         <div class="search-wrap">
-          <el-input 
-            v-model="queryParams.title" 
-            placeholder="搜索笔记标题、课程代码 (如: SE301)..." 
+          <el-input
+            v-model="queryParams.keyword"
+            placeholder="搜索笔记标题、简介、上传者..."
             size="large"
             clearable
             @keyup.enter="handleSearch"
+            @clear="handleSearch"
           >
             <template #append>
               <el-button @click="handleSearch">
@@ -21,35 +21,47 @@
             </template>
           </el-input>
         </div>
-        
-        <!-- 分类标签 -->
-        <div class="category-tabs">
-          <span 
-            class="tab-item" 
-            :class="{ active: queryParams.category === '' }"
-            @click="handleCategory('')"
-          >全部</span>
-          <span 
-            v-for="cat in categoryOptions" 
-            :key="cat"
-            class="tab-item" 
-            :class="{ active: queryParams.category === cat }"
-            @click="handleCategory(cat)"
-          >
-            {{ cat }}
-          </span>
+
+        <div class="filter-row">
+          <!-- 分类标签 -->
+          <div class="category-tabs">
+            <span
+              class="tab-item"
+              :class="{ active: queryParams.category === '' }"
+              @click="handleCategory('')"
+            >全部</span>
+            <span
+              v-for="cat in categoryOptions"
+              :key="cat"
+              class="tab-item"
+              :class="{ active: queryParams.category === cat }"
+              @click="handleCategory(cat)"
+            >
+              {{ cat }}
+            </span>
+          </div>
+
+          <!-- 排序选项 -->
+          <div class="sort-wrap">
+            <el-select v-model="queryParams.sortBy" size="small" @change="handleSearch" style="width: 130px">
+              <el-option label="最新发布" value="newest" />
+              <el-option label="最多浏览" value="popular" />
+              <el-option label="最多下载" value="downloads" />
+              <el-option label="最多点赞" value="likes" />
+            </el-select>
+          </div>
         </div>
       </div>
 
-      <!-- 笔记列表展示区 (Grid布局) -->
+      <!-- 笔记列表展示区 -->
       <div class="note-list-wrapper" v-loading="loading">
         <el-empty v-if="noteList.length === 0 && !loading" description="暂无相关笔记" />
 
         <div class="grid-layout" v-else>
-          <el-card 
-            v-for="note in noteList" 
-            :key="note.id" 
-            class="note-card" 
+          <el-card
+            v-for="note in noteList"
+            :key="note.id"
+            class="note-card"
             shadow="hover"
             @click="goToDetail(note.id)"
           >
@@ -59,7 +71,7 @@
               </el-tag>
               <div class="card-title" :title="note.title">{{ note.title }}</div>
             </div>
-            
+
             <div class="card-body">
               <p class="summary">{{ note.summary || '暂无简介...' }}</p>
             </div>
@@ -70,6 +82,7 @@
                 <span class="name">{{ note.createBy || '匿名' }}</span>
               </div>
               <div class="stats">
+                <span>👍 {{ note.likeCount || 0 }}</span>
                 <span><el-icon><Download /></el-icon> {{ note.downloadCount || 0 }}</span>
                 <span><el-icon><View /></el-icon> {{ note.viewCount || 0 }}</span>
               </div>
@@ -82,9 +95,10 @@
       <div class="pagination-wrap">
         <el-pagination
           background
-          layout="prev, pager, next"
+          layout="total, prev, pager, next"
           :total="total"
           :page-size="queryParams.size"
+          :current-page="queryParams.page"
           @current-change="handlePageChange"
         />
       </div>
@@ -94,12 +108,13 @@
 
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import { Search, Download, View } from '@element-plus/icons-vue'
 import NavBar from '../../components/NavBar.vue'
 import { getNoteList } from '../../api/note'
 
 const router = useRouter()
+const route = useRoute()
 const loading = ref(false)
 const noteList = ref([])
 const total = ref(0)
@@ -107,8 +122,9 @@ const total = ref(0)
 const queryParams = reactive({
   page: 1,
   size: 12,
-  title: '',
-  category: ''
+  keyword: '',
+  category: '',
+  sortBy: 'newest'
 })
 
 const categoryOptions = ['CS', 'SE', 'Math', 'GE']
@@ -116,16 +132,11 @@ const categoryOptions = ['CS', 'SE', 'Math', 'GE']
 const fetchData = async () => {
   loading.value = true
   try {
-    console.log('查询参数:', queryParams)
     const res = await getNoteList(queryParams)
-    
     if (res && res.success) {
-      console.log('获取笔记列表成功:', res.result)
-      // MyBatis-Plus 分页返回格式: { records: [], total: 0, size: 10, current: 1 }
       noteList.value = res.result.records || []
       total.value = res.result.total || 0
     } else {
-      console.error('获取笔记列表失败:', res.message)
       noteList.value = []
       total.value = 0
     }
@@ -150,7 +161,13 @@ const getCategoryType = (cat) => {
   return 'info'
 }
 
-onMounted(() => { fetchData() })
+onMounted(() => {
+  // 从路由参数读取分类（社区页跳转过来）
+  if (route.query.category) {
+    queryParams.category = route.query.category
+  }
+  fetchData()
+})
 </script>
 
 <style scoped>
@@ -158,9 +175,13 @@ onMounted(() => { fetchData() })
 .main-content { max-width: 1200px; margin: 0 auto; padding: 30px 20px; }
 .filter-header { margin-bottom: 30px; }
 .search-wrap { max-width: 600px; margin: 0 auto 20px; }
-.category-tabs { display: flex; justify-content: center; gap: 15px; }
+
+.filter-row { display: flex; justify-content: space-between; align-items: center; }
+.category-tabs { display: flex; gap: 10px; flex-wrap: wrap; }
 .tab-item { padding: 6px 16px; background: #fff; border-radius: 20px; font-size: 14px; color: #606266; cursor: pointer; border: 1px solid #dcdfe6; transition: all 0.3s; }
 .tab-item:hover, .tab-item.active { background-color: #409EFF; color: #fff; border-color: #409EFF; }
+.sort-wrap { flex-shrink: 0; }
+
 .grid-layout { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px; }
 .note-card { border-radius: 12px; border: none; cursor: pointer; transition: transform 0.3s; }
 .note-card:hover { transform: translateY(-5px); box-shadow: 0 10px 20px rgba(0,0,0,0.1); }

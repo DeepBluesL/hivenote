@@ -34,3 +34,14 @@ export const deleteComment = (id) => {
     method: 'delete'
   })
 }
+
+/**
+ * 获取最近评论（社区页面用）
+ */
+export const getRecentComments = (limit = 10) => {
+  return request({
+    url: '/comment/recent',
+    method: 'get',
+    params: { limit }
+  })
+}

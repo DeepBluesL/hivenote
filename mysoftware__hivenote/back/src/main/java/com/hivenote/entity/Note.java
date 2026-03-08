@@ -60,6 +60,16 @@ public class Note implements Serializable {
     private Integer downloadCount;
 
     /**
+     * 点赞数
+     */
+    private Integer likeCount;
+
+    /**
+     * 收藏数
+     */
+    private Integer favoriteCount;
+
+    /**
      * 状态 (1:正常 0:审核中)
      */
     private Integer status;
