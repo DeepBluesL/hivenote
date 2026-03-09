@@ -1,0 +1,21 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(tree:*)",
+      "Bash(node create_docs.js:*)",
+      "Bash(del \"C:\\\\Users\\\\ASUS\\\\Desktop\\\\hivenote\\\\create_docs.js\")",
+      "Bash(node create_responsibility_docs.js:*)",
+      "Bash(unzip:*)",
+      "Bash(node create_ppt.js:*)",
+      "Bash(npm init:*)",
+      "Bash(npm install:*)",
+      "Bash(node create_ppt_en.js:*)",
+      "Bash(gh repo view:*)",
+      "WebFetch(domain:github.com)",
+      "Bash(git rm:*)",
+      "Bash(git reset:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)"
+    ]
+  }
+}
