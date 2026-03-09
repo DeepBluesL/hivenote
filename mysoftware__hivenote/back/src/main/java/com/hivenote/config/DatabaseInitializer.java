@@ -57,6 +57,45 @@ public class DatabaseInitializer implements CommandLineRunner {
             );
             System.out.println("[OK] t_notification 表已就绪");
 
+            // 创建 t_post 帖子表
+            stmt.executeUpdate(
+                    "CREATE TABLE IF NOT EXISTS t_post (" +
+                    "  id BIGINT PRIMARY KEY," +
+                    "  title VARCHAR(200) NOT NULL COMMENT '帖子标题'," +
+                    "  content TEXT COMMENT '帖子内容'," +
+                    "  images VARCHAR(2000) DEFAULT '' COMMENT '图片URL，逗号分隔'," +
+                    "  user_id BIGINT NOT NULL COMMENT '发帖人ID'," +
+                    "  nickname VARCHAR(100) DEFAULT '' COMMENT '发帖人昵称'," +
+                    "  avatar VARCHAR(500) DEFAULT '' COMMENT '发帖人头像'," +
+                    "  view_count INT DEFAULT 0 COMMENT '浏览量'," +
+                    "  like_count INT DEFAULT 0 COMMENT '点赞数'," +
+                    "  reply_count INT DEFAULT 0 COMMENT '回复数'," +
+                    "  status INT DEFAULT 1 COMMENT '状态 1正常 0删除'," +
+                    "  create_time DATETIME DEFAULT CURRENT_TIMESTAMP," +
+                    "  update_time DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP," +
+                    "  INDEX idx_user_id (user_id)," +
+                    "  INDEX idx_status_time (status, create_time)" +
+                    ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='讨论帖子表'"
+            );
+            System.out.println("[OK] t_post 表已就绪");
+
+            // 创建 t_post_reply 帖子回复表
+            stmt.executeUpdate(
+                    "CREATE TABLE IF NOT EXISTS t_post_reply (" +
+                    "  id BIGINT PRIMARY KEY," +
+                    "  post_id BIGINT NOT NULL COMMENT '帖子ID'," +
+                    "  content TEXT COMMENT '回复内容'," +
+                    "  user_id BIGINT NOT NULL COMMENT '回复人ID'," +
+                    "  nickname VARCHAR(100) DEFAULT '' COMMENT '回复人昵称'," +
+                    "  avatar VARCHAR(500) DEFAULT '' COMMENT '回复人头像'," +
+                    "  user_type INT DEFAULT 0 COMMENT '用户类型 0普通 1管理员'," +
+                    "  status INT DEFAULT 1 COMMENT '状态 1正常 0删除'," +
+                    "  create_time DATETIME DEFAULT CURRENT_TIMESTAMP," +
+                    "  INDEX idx_post_id (post_id)" +
+                    ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='帖子回复表'"
+            );
+            System.out.println("[OK] t_post_reply 表已就绪");
+
             System.out.println("=== 数据库自动迁移完成 ===");
 
         } catch (Exception e) {

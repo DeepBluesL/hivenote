@@ -91,6 +91,45 @@ public class FileController {
     }
 
     /**
+     * 帖子图片上传
+     */
+    @PostMapping("/uploadPostImage")
+    public Result<Map<String, String>> uploadPostImage(@RequestParam("file") MultipartFile file) throws IOException {
+        if (file.isEmpty()) {
+            return Result.error("文件不能为空");
+        }
+
+        String originalFilename = file.getOriginalFilename();
+        String suffix = FileUtil.getSuffix(originalFilename).toLowerCase();
+
+        if (!suffix.matches("jpg|jpeg|png|gif|webp")) {
+            return Result.error("只支持上传 JPG、PNG、GIF、WEBP 格式的图片");
+        }
+
+        long maxSize = 10 * 1024 * 1024;
+        if (file.getSize() > maxSize) {
+            return Result.error("图片大小不能超过 10MB");
+        }
+
+        String postImgDir = uploadPath + "posts/";
+        if (!FileUtil.exist(postImgDir)) {
+            FileUtil.mkdir(postImgDir);
+        }
+
+        String fileName = "post_" + DateUtil.format(new Date(), "yyyyMMdd") + "_" + IdUtil.simpleUUID() + "." + suffix;
+        String fullPath = postImgDir + fileName;
+        file.transferTo(new File(fullPath));
+
+        String imageUrl = "http://localhost:8080/zwz/file/view/posts/" + fileName;
+
+        Map<String, String> map = new HashMap<>();
+        map.put("url", imageUrl);
+        map.put("fileName", fileName);
+
+        return Result.success(map);
+    }
+
+    /**
      * 头像上传（仅图片）
      */
     @PostMapping("/uploadAvatar")

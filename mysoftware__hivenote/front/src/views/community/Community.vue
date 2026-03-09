@@ -28,6 +28,46 @@
       <div class="community-body">
         <!-- 左侧主内容 -->
         <div class="main-column">
+          <!-- 热门讨论帖子 -->
+          <div class="section-card">
+            <div class="section-header">
+              <h2><el-icon><ChatDotRound /></el-icon> 热门讨论</h2>
+              <router-link to="/community/posts" class="more-link">查看更多 →</router-link>
+            </div>
+            <div class="post-list" v-loading="loadingPosts">
+              <el-empty v-if="hotPosts.length === 0 && !loadingPosts" description="暂无讨论帖子，快来发第一帖吧！" />
+              <div v-for="(post, index) in hotPosts" :key="post.id" class="post-item" @click="goToPost(post.id)">
+                <div class="post-left">
+                  <el-avatar :size="40" :src="post.avatar || defaultAvatar">
+                    {{ (post.nickname || 'U').charAt(0) }}
+                  </el-avatar>
+                </div>
+                <div class="post-body">
+                  <div class="post-title-row">
+                    <span class="post-rank" :class="{ 'post-rank-hot': index < 3 }">{{ index + 1 }}</span>
+                    <span class="post-title">{{ post.title }}</span>
+                  </div>
+                  <div class="post-snippet">{{ post.content?.replace(/<[^>]+>/g, '').substring(0, 80) }}...</div>
+                  <div class="post-meta">
+                    <span class="post-author">{{ post.nickname || '匿名' }}</span>
+                    <span><el-icon><View /></el-icon> {{ post.viewCount || 0 }}</span>
+                    <span>👍 {{ post.likeCount || 0 }}</span>
+                    <span><el-icon><ChatDotRound /></el-icon> {{ post.replyCount || 0 }}</span>
+                    <span class="post-time">{{ formatDate(post.createTime) }}</span>
+                  </div>
+                </div>
+                <div class="post-images-thumb" v-if="post.images">
+                  <el-image :src="post.images.split(',')[0]" fit="cover" class="thumb-img" />
+                </div>
+              </div>
+            </div>
+            <div class="post-action-bar">
+              <el-button type="primary" @click="$router.push('/community/post/create')">
+                <el-icon><EditPen /></el-icon> 发布帖子
+              </el-button>
+            </div>
+          </div>
+
           <!-- 热门笔记 -->
           <div class="section-card">
             <div class="section-header">
@@ -93,10 +133,13 @@
           <div class="section-card">
             <h3>快捷操作</h3>
             <div class="quick-actions">
-              <el-button type="primary" @click="$router.push('/note/upload')" style="width:100%">
+              <el-button type="primary" class="action-btn" @click="$router.push('/community/post/create')">
+                <el-icon><EditPen /></el-icon> 发布帖子
+              </el-button>
+              <el-button type="success" class="action-btn" @click="$router.push('/note/upload')">
                 <el-icon><Upload /></el-icon> 上传笔记
               </el-button>
-              <el-button @click="$router.push('/home')" style="width:100%; margin-top: 10px">
+              <el-button class="action-btn" @click="$router.push('/home')">
                 <el-icon><Search /></el-icon> 搜索笔记
               </el-button>
             </div>
@@ -138,19 +181,23 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import NavBar from '../../components/NavBar.vue'
-import { TrendCharts, Clock, View, Download, Upload, Search } from '@element-plus/icons-vue'
+import { TrendCharts, Clock, View, Download, Upload, Search, ChatDotRound, EditPen } from '@element-plus/icons-vue'
 import { getHotNotes, getLatestNotes, getNoteStats } from '@/api/note'
 import { getRecentComments } from '@/api/comment'
+import { getHotPosts } from '@/api/post'
 
 const router = useRouter()
+const defaultAvatar = 'https://cube.elemecdn.com/0/88/03b0d39583f48206768a7534e55bcpng.png'
 
 const stats = ref({})
 const hotNotes = ref([])
 const latestNotes = ref([])
 const recentComments = ref([])
+const hotPosts = ref([])
 const loadingHot = ref(false)
 const loadingLatest = ref(false)
 const loadingComments = ref(false)
+const loadingPosts = ref(false)
 
 const categories = computed(() => {
   const map = {}
@@ -191,18 +238,21 @@ const getCategoryType = (cat) => {
 
 const goToDetail = (id) => router.push(`/note/detail/${id}`)
 const goToCategory = (cat) => router.push({ path: '/home', query: { category: cat } })
+const goToPost = (id) => router.push(`/community/post/${id}`)
 
 const loadData = async () => {
   loadingHot.value = true
   loadingLatest.value = true
   loadingComments.value = true
+  loadingPosts.value = true
 
   try {
-    const [hotRes, latestRes, statsRes, commentsRes] = await Promise.allSettled([
+    const [hotRes, latestRes, statsRes, commentsRes, postsRes] = await Promise.allSettled([
       getHotNotes(8),
       getLatestNotes(6),
       getNoteStats(),
-      getRecentComments(8)
+      getRecentComments(8),
+      getHotPosts(6)
     ])
 
     if (hotRes.status === 'fulfilled' && hotRes.value?.success) {
@@ -217,12 +267,16 @@ const loadData = async () => {
     if (commentsRes.status === 'fulfilled' && commentsRes.value?.success) {
       recentComments.value = commentsRes.value.result || []
     }
+    if (postsRes.status === 'fulfilled' && postsRes.value?.success) {
+      hotPosts.value = postsRes.value.result || []
+    }
   } catch (e) {
     console.error('加载社区数据失败:', e)
   } finally {
     loadingHot.value = false
     loadingLatest.value = false
     loadingComments.value = false
+    loadingPosts.value = false
   }
 }
 
@@ -297,7 +351,8 @@ onMounted(() => loadData())
 .latest-stats { display: flex; gap: 10px; }
 
 /* Quick Actions */
-.quick-actions { display: flex; flex-direction: column; }
+.quick-actions { display: flex; flex-direction: column; gap: 10px; }
+.quick-actions .action-btn { width: 100%; margin-left: 0 !important; }
 
 /* Category List */
 .category-list { display: flex; flex-direction: column; gap: 10px; }
@@ -316,6 +371,31 @@ onMounted(() => loadData())
 .comment-header { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
 .comment-user { font-size: 13px; font-weight: 500; color: #303133; }
 .comment-text { font-size: 13px; color: #606266; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* Post List */
+.post-item {
+  display: flex; gap: 14px; padding: 16px 0;
+  border-bottom: 1px solid #f2f3f5; cursor: pointer; transition: background 0.2s;
+}
+.post-item:last-child { border-bottom: none; }
+.post-item:hover { background: #fafbfc; border-radius: 8px; padding-left: 8px; padding-right: 8px; }
+.post-left { flex-shrink: 0; }
+.post-body { flex: 1; min-width: 0; }
+.post-title-row { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+.post-rank {
+  width: 22px; height: 22px; border-radius: 4px; background: #e8e8e8;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11px; font-weight: 700; color: #999; flex-shrink: 0;
+}
+.post-rank-hot { background: linear-gradient(135deg, #f56c6c, #e6a23c); color: #fff; }
+.post-title { font-size: 15px; font-weight: 600; color: #303133; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.post-snippet { font-size: 13px; color: #909399; line-height: 1.5; margin-bottom: 8px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.post-meta { display: flex; align-items: center; gap: 12px; font-size: 12px; color: #909399; flex-wrap: wrap; }
+.post-author { font-weight: 500; color: #606266; }
+.post-time { margin-left: auto; }
+.post-images-thumb { flex-shrink: 0; width: 80px; height: 80px; border-radius: 8px; overflow: hidden; }
+.thumb-img { width: 100%; height: 100%; object-fit: cover; }
+.post-action-bar { padding-top: 16px; display: flex; justify-content: center; }
 
 /* Admin comment styles */
 .admin-comment-item { background: linear-gradient(135deg, #f5f0ff, #ede9fe); border-radius: 8px; padding: 10px; }

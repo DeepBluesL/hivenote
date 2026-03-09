@@ -33,6 +33,21 @@ const routes = [
     component: () => import('../views/community/Community.vue')
   },
   {
+    path: '/community/posts',
+    name: 'PostList',
+    component: () => import('../views/community/PostList.vue')
+  },
+  {
+    path: '/community/post/create',
+    name: 'PostCreate',
+    component: () => import('../views/community/PostCreate.vue')
+  },
+  {
+    path: '/community/post/:id',
+    name: 'PostDetail',
+    component: () => import('../views/community/PostDetail.vue')
+  },
+  {
     // 动态路由：:id 是参数，比如 /note/detail/123
     path: '/note/detail/:id',
     name: 'NoteDetail',
@@ -78,6 +93,7 @@ router.beforeEach((to, from, next) => {
   
   // 白名单：不需要登录就能访问的页面
   const whiteList = ['/login', '/register', '/forgot-password', '/admin/login', '/community']
+  const isWhiteListed = whiteList.includes(to.path) || to.path.startsWith('/community/')
   
   if (token) {
     // 已登录
@@ -108,7 +124,7 @@ router.beforeEach((to, from, next) => {
     }
   } else {
     // 未登录
-    if (whiteList.includes(to.path)) {
+    if (isWhiteListed) {
       // 在白名单中，直接放行
       next()
     } else {
