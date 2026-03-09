@@ -46,6 +46,8 @@ public class WebMvcConfig implements WebMvcConfigurer {
                         "/note/download/**", // 增加下载次数（公开）
                         "/note/hot",         // 热门笔记（公开）
                         "/note/latest",      // 最新笔记（公开）
+                        "/note/recommend",   // 推荐笔记（公开）
+                        "/note/examSprint",  // 期末冲刺笔记（公开）
                         "/note/stats",       // 社区统计（公开）
                         "/comment/getAllByPage", // 评论列表（公开）
                         "/comment/recent",   // 最近评论（公开）

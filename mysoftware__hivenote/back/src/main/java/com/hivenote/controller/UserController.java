@@ -246,6 +246,97 @@ public class UserController {
     }
 
     /**
+     * 管理员获取用户列表
+     */
+    @GetMapping("/user/admin/list")
+    public Result<Object> getAdminUserList(@RequestParam(defaultValue = "1") int page,
+                                           @RequestParam(defaultValue = "20") int size,
+                                           String keyword,
+                                           Integer status,
+                                           @RequestHeader("accessToken") String token) {
+        User currentUser = sessionMap.get(token);
+        if (currentUser == null) {
+            return Result.error(401, "请先登录");
+        }
+        if (currentUser.getType() == null || currentUser.getType() != 1) {
+            return Result.error(403, "无权访问");
+        }
+
+        com.baomidou.mybatisplus.extension.plugins.pagination.Page<User> pageParam =
+                new com.baomidou.mybatisplus.extension.plugins.pagination.Page<>(page, size);
+        QueryWrapper<User> qw = new QueryWrapper<>();
+        qw.ne("type", 1);
+        if (keyword != null && !keyword.trim().isEmpty()) {
+            qw.and(w -> w.like("username", keyword)
+                    .or().like("nickname", keyword)
+                    .or().like("email", keyword));
+        }
+        if (status != null) {
+            qw.eq("status", status);
+        }
+        qw.orderByDesc("create_time");
+
+        var result = userService.page(pageParam, qw);
+        result.getRecords().forEach(u -> u.setPassword(null));
+        return Result.success(result);
+    }
+
+    /**
+     * 管理员封禁用户
+     */
+    @PostMapping("/user/admin/ban/{id}")
+    public Result<Object> banUser(@PathVariable Long id,
+                                  @RequestHeader("accessToken") String token) {
+        User currentUser = sessionMap.get(token);
+        if (currentUser == null) {
+            return Result.error(401, "请先登录");
+        }
+        if (currentUser.getType() == null || currentUser.getType() != 1) {
+            return Result.error(403, "无权操作");
+        }
+
+        User user = userService.getById(id);
+        if (user == null) {
+            return Result.error("用户不存在");
+        }
+        if (user.getType() != null && user.getType() == 1) {
+            return Result.error("不能封禁管理员");
+        }
+
+        user.setStatus(-1);
+        userService.updateById(user);
+
+        sessionMap.entrySet().removeIf(entry -> entry.getValue().getId().equals(id));
+
+        return Result.success("用户已封禁");
+    }
+
+    /**
+     * 管理员解封用户
+     */
+    @PostMapping("/user/admin/unban/{id}")
+    public Result<Object> unbanUser(@PathVariable Long id,
+                                    @RequestHeader("accessToken") String token) {
+        User currentUser = sessionMap.get(token);
+        if (currentUser == null) {
+            return Result.error(401, "请先登录");
+        }
+        if (currentUser.getType() == null || currentUser.getType() != 1) {
+            return Result.error(403, "无权操作");
+        }
+
+        User user = userService.getById(id);
+        if (user == null) {
+            return Result.error("用户不存在");
+        }
+
+        user.setStatus(0);
+        userService.updateById(user);
+
+        return Result.success("用户已解封");
+    }
+
+    /**
      * 7. 管理员登录
      */
     @PostMapping("/user/adminLogin")

@@ -45,3 +45,15 @@ export const getRecentComments = (limit = 10) => {
     params: { limit }
   })
 }
+
+/**
+ * 管理员获取所有评论列表
+ */
+export const getAdminCommentList = (params) => {
+  return request({
+    url: '/comment/admin/list',
+    method: 'get',
+    params,
+    silent: true
+  })
+}

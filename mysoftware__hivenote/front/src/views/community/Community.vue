@@ -118,12 +118,13 @@
             <h3>最近评论</h3>
             <div class="recent-comments" v-loading="loadingComments">
               <el-empty v-if="recentComments.length === 0 && !loadingComments" description="暂无评论" :image-size="60" />
-              <div v-for="item in recentComments" :key="item.id" class="comment-item" @click="goToDetail(item.noteId)">
+              <div v-for="item in recentComments" :key="item.id" class="comment-item" :class="{ 'admin-comment-item': item.userType === 1 }" @click="goToDetail(item.noteId)">
                 <div class="comment-header">
-                  <el-avatar :size="24" style="background:#67C23A">{{ (item.nickname || 'U').charAt(0) }}</el-avatar>
-                  <span class="comment-user">{{ item.nickname || item.username }}</span>
+                  <el-avatar :size="24" :style="{ background: item.userType === 1 ? '#7c3aed' : '#67C23A' }">{{ (item.nickname || 'U').charAt(0) }}</el-avatar>
+                  <span class="comment-user" :class="{ 'admin-user': item.userType === 1 }">{{ item.nickname || item.username }}</span>
+                  <el-tag v-if="item.userType === 1" size="small" style="background:linear-gradient(135deg,#7c3aed,#a855f7);border:none;color:#fff;font-size:9px;margin-left:4px" effect="dark">管理员</el-tag>
                 </div>
-                <div class="comment-text">{{ item.content }}</div>
+                <div class="comment-text" :class="{ 'admin-comment-text': item.userType === 1 }">{{ item.content }}</div>
               </div>
             </div>
           </div>
@@ -315,6 +316,11 @@ onMounted(() => loadData())
 .comment-header { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
 .comment-user { font-size: 13px; font-weight: 500; color: #303133; }
 .comment-text { font-size: 13px; color: #606266; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* Admin comment styles */
+.admin-comment-item { background: linear-gradient(135deg, #f5f0ff, #ede9fe); border-radius: 8px; padding: 10px; }
+.admin-user { color: #7c3aed; font-weight: 600; }
+.admin-comment-text { color: #4c1d95; }
 
 /* Responsive */
 @media (max-width: 768px) {

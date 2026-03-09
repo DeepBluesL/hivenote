@@ -44,7 +44,9 @@ service.interceptors.response.use(
         localStorage.removeItem('userInfo')
         window.location.href = '/login'
       }
-      ElMessage.error(res.message || '系统错误')
+      if (!response.config?.silent) {
+        ElMessage.error(res.message || '系统错误')
+      }
       return Promise.reject(new Error(res.message || 'Error'))
     } else {
       return res // 请求成功，把数据交出去
@@ -53,7 +55,8 @@ service.interceptors.response.use(
   error => {
     console.log('请求错误:', error)
     
-    // 处理网络错误
+    const silent = error.config?.silent
+    
     if (error.response) {
       const status = error.response.status
       switch (status) {
@@ -64,21 +67,21 @@ service.interceptors.response.use(
           window.location.href = '/login'
           break
         case 403:
-          ElMessage.error('拒绝访问')
+          if (!silent) ElMessage.error('拒绝访问')
           break
         case 404:
-          ElMessage.error('请求的资源不存在')
+          if (!silent) ElMessage.error('请求的资源不存在')
           break
         case 500:
-          ElMessage.error('服务器错误')
+          if (!silent) ElMessage.error('服务器错误')
           break
         default:
-          ElMessage.error(error.response.data?.message || '请求失败')
+          if (!silent) ElMessage.error(error.response.data?.message || '请求失败')
       }
     } else if (error.request) {
-      ElMessage.error('网络连接失败，请检查网络')
+      if (!silent) ElMessage.error('网络连接失败，请检查网络')
     } else {
-      ElMessage.error(error.message || '请求配置错误')
+      if (!silent) ElMessage.error(error.message || '请求配置错误')
     }
     
     return Promise.reject(error)

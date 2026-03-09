@@ -44,6 +44,83 @@
             </el-select>
           </el-form-item>
 
+          <!-- 标签选择 -->
+          <el-form-item label="笔记标签（可选，最多选5个）">
+            <div class="tags-section">
+              <!-- 已选标签展示 -->
+              <div class="selected-tags" v-if="form.tags.length > 0">
+                <el-tag
+                  v-for="tag in form.tags"
+                  :key="tag"
+                  closable
+                  type="primary"
+                  effect="light"
+                  @close="removeTag(tag)"
+                  class="selected-tag"
+                >{{ tag }}</el-tag>
+              </div>
+
+              <!-- 快捷标签分组 -->
+              <div class="tag-groups">
+                <div class="tag-group">
+                  <span class="tag-group-label">📚 考试相关：</span>
+                  <div class="tag-group-items">
+                    <span
+                      v-for="tag in examRelatedTags"
+                      :key="tag"
+                      class="quick-tag"
+                      :class="{ selected: form.tags.includes(tag), disabled: !form.tags.includes(tag) && form.tags.length >= 5 }"
+                      @click="toggleTag(tag)"
+                    >{{ tag }}</span>
+                  </div>
+                </div>
+
+                <div class="tag-group">
+                  <span class="tag-group-label">💻 课程相关：</span>
+                  <div class="tag-group-items">
+                    <span
+                      v-for="tag in courseRelatedTags"
+                      :key="tag"
+                      class="quick-tag"
+                      :class="{ selected: form.tags.includes(tag), disabled: !form.tags.includes(tag) && form.tags.length >= 5 }"
+                      @click="toggleTag(tag)"
+                    >{{ tag }}</span>
+                  </div>
+                </div>
+
+                <div class="tag-group">
+                  <span class="tag-group-label">📝 内容类型：</span>
+                  <div class="tag-group-items">
+                    <span
+                      v-for="tag in contentTypeTags"
+                      :key="tag"
+                      class="quick-tag"
+                      :class="{ selected: form.tags.includes(tag), disabled: !form.tags.includes(tag) && form.tags.length >= 5 }"
+                      @click="toggleTag(tag)"
+                    >{{ tag }}</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 自定义标签输入 -->
+              <div class="custom-tag-input">
+                <el-input
+                  v-model="customTagInput"
+                  placeholder="输入自定义标签，按回车添加"
+                  size="default"
+                  style="width: 260px"
+                  @keyup.enter="addCustomTag"
+                  :disabled="form.tags.length >= 5"
+                >
+                  <template #append>
+                    <el-button @click="addCustomTag" :disabled="form.tags.length >= 5">添加</el-button>
+                  </template>
+                </el-input>
+                <span class="tag-count">{{ form.tags.length }}/5</span>
+              </div>
+            </div>
+          </el-form-item>
+
           <el-form-item label="笔记简介">
             <el-input v-model="form.summary" type="textarea" :rows="4" placeholder="简单介绍一下这份笔记包含的内容..." />
           </el-form-item>
@@ -93,14 +170,55 @@ const router = useRouter()
 const uploading = ref(false)
 const schoolLoading = ref(false)
 const schoolOptions = ref([])
+const customTagInput = ref('')
+
+const examRelatedTags = ['期末复习', '考试重点', '期末冲刺', '真题解析', '考前速记', '知识总结', '高分笔记']
+const courseRelatedTags = ['数据结构', '算法', '操作系统', '计算机网络', '数据库', '高等数学', '线性代数', '概率统计', '离散数学', '编译原理', '软件工程', '人工智能']
+const contentTypeTags = ['课堂笔记', '实验报告', '学习心得', '编程实践', '项目经验', '论文写作', '思维导图', '公式整理', '代码示例']
 
 const form = reactive({
   title: '',
   category: '',
   school: '',
   summary: '',
+  tags: [],
   file: null
 })
+
+const toggleTag = (tag) => {
+  const idx = form.tags.indexOf(tag)
+  if (idx > -1) {
+    form.tags.splice(idx, 1)
+  } else if (form.tags.length < 5) {
+    form.tags.push(tag)
+  }
+}
+
+const removeTag = (tag) => {
+  const idx = form.tags.indexOf(tag)
+  if (idx > -1) {
+    form.tags.splice(idx, 1)
+  }
+}
+
+const addCustomTag = () => {
+  const tag = customTagInput.value.trim()
+  if (!tag) return
+  if (form.tags.length >= 5) {
+    ElMessage.warning('最多只能添加5个标签')
+    return
+  }
+  if (form.tags.includes(tag)) {
+    ElMessage.warning('该标签已存在')
+    return
+  }
+  if (tag.length > 10) {
+    ElMessage.warning('标签长度不能超过10个字符')
+    return
+  }
+  form.tags.push(tag)
+  customTagInput.value = ''
+}
 
 const handleSchoolSearch = async (query) => {
   if (!query) {
@@ -128,7 +246,6 @@ const initSchool = () => {
   }
 }
 
-// 上传文件到服务器
 const uploadFile = async (file) => {
   const formData = new FormData()
   formData.append('file', file)
@@ -147,15 +264,13 @@ const handleFileChange = (file) => {
   form.file = file.raw
 }
 
-// 文件上传前的校验
 const beforeUpload = (file) => {
-  // 检查文件类型
   const allowedTypes = [
-    'application/pdf',                                                          // PDF
-    'video/mp4',                                                                // MP4
-    'application/vnd.openxmlformats-officedocument.wordprocessingml.document', // DOCX
-    'application/zip',                                                          // ZIP
-    'application/x-zip-compressed'                                              // ZIP (兼容)
+    'application/pdf',
+    'video/mp4',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    'application/zip',
+    'application/x-zip-compressed'
   ]
   
   const isAllowedType = allowedTypes.includes(file.type)
@@ -164,7 +279,6 @@ const beforeUpload = (file) => {
     return false
   }
   
-  // 检查文件大小（50MB）
   const isLt50M = file.size / 1024 / 1024 < 50
   if (!isLt50M) {
     ElMessage.error('文件大小不能超过 50MB！')
@@ -175,7 +289,6 @@ const beforeUpload = (file) => {
 }
 
 const onSubmit = async () => {
-  // 表单验证
   if (!form.title || !form.title.trim()) {
     return ElMessage.warning('请输入笔记标题')
   }
@@ -189,7 +302,6 @@ const onSubmit = async () => {
   uploading.value = true
   
   try {
-    // 1. 先上传文件获取URL
     console.log('开始上传文件:', form.file.name)
     const fileRes = await uploadFile(form.file)
     
@@ -199,13 +311,13 @@ const onSubmit = async () => {
     
     console.log('文件上传成功:', fileRes.result.url)
     
-    // 2. 提交笔记信息
     const noteData = {
       title: form.title,
       category: form.category,
       school: form.school || '',
       summary: form.summary || '',
-      fileUrl: fileRes.result.url
+      fileUrl: fileRes.result.url,
+      tags: form.tags.join(',')
     }
     
     console.log('提交笔记数据:', noteData)
@@ -213,7 +325,6 @@ const onSubmit = async () => {
     
     if (res && res.success) {
       ElMessage.success(res.message || '发布成功！')
-      // 延迟跳转
       setTimeout(() => {
         router.push('/home')
       }, 1000)
@@ -238,4 +349,81 @@ onMounted(() => {
 .main-content { max-width: 800px; margin: 30px auto; padding: 0 20px; }
 .card-header { font-size: 18px; font-weight: bold; display: flex; align-items: center; gap: 8px; }
 .submit-btn { width: 100%; margin-top: 20px; }
+
+/* 标签选择区样式 */
+.tags-section {
+  width: 100%;
+}
+
+.selected-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 16px;
+  padding: 12px;
+  background: #f0f9ff;
+  border-radius: 8px;
+  border: 1px dashed #b3d8ff;
+}
+.selected-tag {
+  font-size: 13px;
+}
+
+.tag-groups {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+.tag-group {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+.tag-group-label {
+  font-size: 13px;
+  color: #606266;
+  white-space: nowrap;
+  padding-top: 4px;
+  min-width: 100px;
+}
+.tag-group-items {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.quick-tag {
+  padding: 4px 12px;
+  font-size: 12px;
+  background: #f4f4f5;
+  color: #606266;
+  border-radius: 12px;
+  cursor: pointer;
+  border: 1px solid #e0e0e0;
+  transition: all 0.2s;
+  user-select: none;
+}
+.quick-tag:hover:not(.disabled) {
+  border-color: #409EFF;
+  color: #409EFF;
+}
+.quick-tag.selected {
+  background: #409EFF;
+  color: #fff;
+  border-color: #409EFF;
+}
+.quick-tag.disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.custom-tag-input {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.tag-count {
+  font-size: 13px;
+  color: #909399;
+}
 </style>

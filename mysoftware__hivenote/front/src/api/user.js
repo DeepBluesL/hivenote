@@ -80,3 +80,35 @@ export const adminLogin = (data) => {
     data
   })
 }
+
+/**
+ * 管理员获取用户列表
+ */
+export const getAdminUserList = (params) => {
+  return request({
+    url: '/user/admin/list',
+    method: 'get',
+    params,
+    silent: true
+  })
+}
+
+/**
+ * 管理员封禁用户
+ */
+export const banUser = (id) => {
+  return request({
+    url: `/user/admin/ban/${id}`,
+    method: 'post'
+  })
+}
+
+/**
+ * 管理员解封用户
+ */
+export const unbanUser = (id) => {
+  return request({
+    url: `/user/admin/unban/${id}`,
+    method: 'post'
+  })
+}

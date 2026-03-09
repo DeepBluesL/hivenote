@@ -124,3 +124,49 @@ export const getNoteStats = () => {
     method: 'get'
   })
 }
+
+/**
+ * 12. 获取推荐笔记（综合热度排序）
+ */
+export const getRecommendNotes = (limit = 6) => {
+  return request({
+    url: '/note/recommend',
+    method: 'get',
+    params: { limit },
+    silent: true
+  })
+}
+
+/**
+ * 13. 获取期末冲刺笔记
+ */
+export const getExamSprintNotes = (limit = 8, tag = '') => {
+  return request({
+    url: '/note/examSprint',
+    method: 'get',
+    params: { limit, tag },
+    silent: true
+  })
+}
+
+/**
+ * 14. 管理员设置/取消推荐笔记
+ */
+export const setNoteFeatured = (id, featured) => {
+  return request({
+    url: `/note/admin/setFeatured/${id}`,
+    method: 'post',
+    params: { featured }
+  })
+}
+
+/**
+ * 15. 管理员设置/取消期末冲刺推荐
+ */
+export const setNoteExamFeatured = (id, examFeatured) => {
+  return request({
+    url: `/note/admin/setExamFeatured/${id}`,
+    method: 'post',
+    params: { examFeatured }
+  })
+}
