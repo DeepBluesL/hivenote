@@ -1,8 +1,8 @@
 spring:
   datasource:
-    url: jdbc:mysql://localhost:3306/hivenote?useUnicode=true&characterEncoding=utf-8&useSSL=false&serverTimezone=Asia/Tokyo
+    url: jdbc:mysql://localhost:3306/hivenote?useUnicode=true&characterEncoding=utf-8&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Tokyo
     username: hivenote
-    password: ${DB_PASSWORD}
+    password: hivenote
     driver-class-name: com.mysql.cj.jdbc.Driver
 
 file:
