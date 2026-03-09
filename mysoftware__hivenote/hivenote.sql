@@ -35,6 +35,9 @@ CREATE TABLE `a_user` (
   `sex` varchar(255) DEFAULT NULL,
   `type` int DEFAULT '0' COMMENT '用户类型 0普通 1管理员',
   `status` int DEFAULT '0' COMMENT '状态 0正常 -1禁用',
+  `school` varchar(255) DEFAULT NULL COMMENT '学校',
+  `show_email` int DEFAULT '1' COMMENT '是否公开邮箱 0不公开 1公开',
+  `show_student_id` int DEFAULT '1' COMMENT '是否公开学号 0不公开 1公开',
   `del_flag` int DEFAULT '0',
   `pass_strength` varchar(2) DEFAULT NULL,
   `create_by` varchar(255) DEFAULT NULL,
@@ -47,7 +50,7 @@ CREATE TABLE `a_user` (
 
 /*Data for the table `a_user` */
 
-insert  into `a_user`(`id`,`username`,`password`,`nickname`,`mobile`,`email`,`address`,`avatar`,`description`,`department_id`,`department_title`,`sex`,`type`,`status`,`del_flag`,`pass_strength`,`create_by`,`create_time`,`update_by`,`update_time`) values ('1464764315201572864','admin','e10adc3949ba59abbe56e057f20f883e','系统管理员','17857054388','admin@hivenote.com',NULL,'https://cube.elemecdn.com/0/88/03b0d39583f48206768a7534e55bcpng.png',NULL,NULL,NULL,NULL,1,1,0,NULL,NULL,'2022-03-20 09:46:20.000000',NULL,NULL),('1998599353370877952','user','e10adc3949ba59abbe56e057f20f883e','用户1',NULL,'774124559@qq.com',NULL,'https://cube.elemecdn.com/0/88/03b0d39583f48206768a7534e55bcpng.png',NULL,NULL,NULL,NULL,0,1,0,NULL,NULL,NULL,NULL,NULL),('1998679341432524800','user1','e10adc3949ba59abbe56e057f20f883e','user1',NULL,'774124559@qq.com',NULL,'https://cube.elemecdn.com/0/88/03b0d39583f48206768a7534e55bcpng.png',NULL,NULL,NULL,NULL,0,1,0,NULL,NULL,NULL,NULL,NULL);
+insert  into `a_user`(`id`,`username`,`password`,`nickname`,`mobile`,`email`,`address`,`avatar`,`description`,`department_id`,`department_title`,`sex`,`type`,`status`,`school`,`show_email`,`show_student_id`,`del_flag`,`pass_strength`,`create_by`,`create_time`,`update_by`,`update_time`) values ('1464764315201572864','admin','e10adc3949ba59abbe56e057f20f883e','系统管理员','17857054388','admin@hivenote.com',NULL,'https://cube.elemecdn.com/0/88/03b0d39583f48206768a7534e55bcpng.png',NULL,NULL,NULL,NULL,1,1,NULL,1,1,0,NULL,NULL,'2022-03-20 09:46:20.000000',NULL,NULL),('1998599353370877952','user','e10adc3949ba59abbe56e057f20f883e','用户1',NULL,'774124559@qq.com',NULL,'https://cube.elemecdn.com/0/88/03b0d39583f48206768a7534e55bcpng.png',NULL,NULL,NULL,NULL,0,1,NULL,1,1,0,NULL,NULL,NULL,NULL,NULL),('1998679341432524800','user1','e10adc3949ba59abbe56e057f20f883e','user1',NULL,'774124559@qq.com',NULL,'https://cube.elemecdn.com/0/88/03b0d39583f48206768a7534e55bcpng.png',NULL,NULL,NULL,NULL,0,1,NULL,1,1,0,NULL,NULL,NULL,NULL,NULL);
 
 /*Table structure for table `a_user_role` */
 
@@ -104,6 +107,7 @@ CREATE TABLE `t_note` (
   `download_count` int DEFAULT '0' COMMENT '下载量',
   `status` int DEFAULT '1' COMMENT '状态 0审核中 1正常',
   `create_by` varchar(32) DEFAULT NULL COMMENT '创建人(存储用户名)',
+  `school` varchar(255) DEFAULT NULL COMMENT '上传者所属学校',
   `create_time` datetime DEFAULT NULL COMMENT '创建时间',
   `update_by` varchar(32) DEFAULT NULL COMMENT '更新人',
   `update_time` datetime DEFAULT NULL COMMENT '更新时间',
@@ -113,7 +117,7 @@ CREATE TABLE `t_note` (
 
 /*Data for the table `t_note` */
 
-insert  into `t_note`(`id`,`title`,`category`,`summary`,`file_url`,`view_count`,`download_count`,`status`,`create_by`,`create_time`,`update_by`,`update_time`,`del_flag`) values ('1','HiveNote开发实战手册','SE','这是一份关于如何开发HiveNote的后端指南','http://localhost:8080/file/test.pdf',1030,68,1,'admin','2025-12-10 10:04:15',NULL,NULL,0),('1998613851481767936','测试','CS','','http://localhost:8080/zwz/file/view/20251210_27e5941d2dfa4710a89ca5a18cae638c.png',13,4,1,'user','2025-12-10 12:40:49','user','2025-12-10 16:10:55',1),('1998666886870405120','测试','CS','测试测试测试测试测试测试测试测试','http://localhost:8080/zwz/file/view/20251210_72c596c4c59d4fc6b791ccf6baaf0e2f.zip',13,1,1,'user','2025-12-10 16:11:34',NULL,NULL,0),('1998679106706690048','测试1','Math','测试1测试1测试1测试1测试1测试1测试1测试1测试1测试1测试1测试1测试1测试1','http://localhost:8080/zwz/file/view/20251210_e3ae82f366034e549434d88efb533d97.zip',2,1,1,'user','2025-12-10 17:00:07',NULL,NULL,0),('1998785602103013376','测试2','GE','测试2测试2测试2测试2测试2测试2测试2测试2测试2','http://localhost:8080/zwz/file/view/20251211_10f79f41fd014e969e4deadc4d23fa6f.mp4',1,0,2,'user','2025-12-11 00:03:18','admin','2025-12-11 00:03:53',0),('1998786352925372416','测试3','GE','测试3测试3测试3测试3测试3','http://localhost:8080/zwz/file/view/20251211_f7701ad4ffa14ff498719e96b4bcc99e.mp4',0,0,1,'user','2025-12-11 00:06:17','admin','2025-12-11 00:06:45',0),('1998786603719585792','测试4','Math','测试4测试4测试4测试4测试4','http://localhost:8080/zwz/file/view/20251211_ce78b4ae3ec64676949533cc9688b78d.mp4',0,0,0,'user','2025-12-11 00:07:17',NULL,NULL,0);
+insert  into `t_note`(`id`,`title`,`category`,`summary`,`file_url`,`view_count`,`download_count`,`status`,`create_by`,`school`,`create_time`,`update_by`,`update_time`,`del_flag`) values ('1','HiveNote开发实战手册','SE','这是一份关于如何开发HiveNote的后端指南','http://localhost:8080/file/test.pdf',1030,68,1,'admin',NULL,'2025-12-10 10:04:15',NULL,NULL,0),('1998613851481767936','测试','CS','','http://localhost:8080/zwz/file/view/20251210_27e5941d2dfa4710a89ca5a18cae638c.png',13,4,1,'user',NULL,'2025-12-10 12:40:49','user','2025-12-10 16:10:55',1),('1998666886870405120','测试','CS','测试测试测试测试测试测试测试测试','http://localhost:8080/zwz/file/view/20251210_72c596c4c59d4fc6b791ccf6baaf0e2f.zip',13,1,1,'user',NULL,'2025-12-10 16:11:34',NULL,NULL,0),('1998679106706690048','测试1','Math','测试1测试1测试1测试1测试1测试1测试1测试1测试1测试1测试1测试1测试1测试1','http://localhost:8080/zwz/file/view/20251210_e3ae82f366034e549434d88efb533d97.zip',2,1,1,'user',NULL,'2025-12-10 17:00:07',NULL,NULL,0),('1998785602103013376','测试2','GE','测试2测试2测试2测试2测试2测试2测试2测试2测试2','http://localhost:8080/zwz/file/view/20251211_10f79f41fd014e969e4deadc4d23fa6f.mp4',1,0,2,'user',NULL,'2025-12-11 00:03:18','admin','2025-12-11 00:03:53',0),('1998786352925372416','测试3','GE','测试3测试3测试3测试3测试3','http://localhost:8080/zwz/file/view/20251211_f7701ad4ffa14ff498719e96b4bcc99e.mp4',0,0,1,'user',NULL,'2025-12-11 00:06:17','admin','2025-12-11 00:06:45',0),('1998786603719585792','测试4','Math','测试4测试4测试4测试4测试4','http://localhost:8080/zwz/file/view/20251211_ce78b4ae3ec64676949533cc9688b78d.mp4',0,0,0,'user',NULL,'2025-12-11 00:07:17',NULL,NULL,0);
 
 /*Table structure for table `t_favorite` */
 
