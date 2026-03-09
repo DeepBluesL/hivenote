@@ -33,6 +33,21 @@ export const addPost = (data) => {
   })
 }
 
+export const getMyPosts = () => {
+  return request({
+    url: '/post/myList',
+    method: 'get'
+  })
+}
+
+export const editPost = (data) => {
+  return request({
+    url: '/post/edit',
+    method: 'post',
+    data
+  })
+}
+
 export const deletePost = (id) => {
   return request({
     url: `/post/delete/${id}`,

@@ -169,6 +169,44 @@
             <el-empty v-if="!loadingFavorites && myFavorites.length === 0" description="还没有收藏任何笔记" />
           </div>
         </el-tab-pane>
+
+        <el-tab-pane label="我的帖子" name="posts">
+          <div class="tab-content">
+            <div class="tab-header">
+              <h3>我的帖子 ({{ myPosts.length }})</h3>
+              <el-button type="primary" size="small" @click="router.push('/community/post/create')">发布新帖</el-button>
+            </div>
+            <el-table :data="myPosts" style="width: 100%" border v-loading="loadingPosts">
+              <el-table-column prop="title" label="帖子标题" min-width="180" show-overflow-tooltip />
+              <el-table-column label="浏览" width="80" align="center">
+                <template #default="scope">{{ scope.row.viewCount || 0 }}</template>
+              </el-table-column>
+              <el-table-column label="点赞" width="80" align="center">
+                <template #default="scope">{{ scope.row.likeCount || 0 }}</template>
+              </el-table-column>
+              <el-table-column label="回复" width="80" align="center">
+                <template #default="scope">{{ scope.row.replyCount || 0 }}</template>
+              </el-table-column>
+              <el-table-column label="发布时间" width="120">
+                <template #default="scope">{{ formatDate(scope.row.createTime) }}</template>
+              </el-table-column>
+              <el-table-column label="状态" width="90" align="center">
+                <template #default="scope">
+                  <el-tag type="success" v-if="scope.row.status === 1">正常</el-tag>
+                  <el-tag type="info" v-else>已删除</el-tag>
+                </template>
+              </el-table-column>
+              <el-table-column label="操作" width="180" align="center">
+                <template #default="scope">
+                  <el-button type="primary" link @click="router.push(`/community/post/${scope.row.id}`)">查看</el-button>
+                  <el-button type="warning" link @click="router.push(`/community/post/edit/${scope.row.id}`)" v-if="scope.row.status === 1">编辑</el-button>
+                  <el-button type="danger" link @click="handleDeletePost(scope.row)" v-if="scope.row.status === 1">删除</el-button>
+                </template>
+              </el-table-column>
+            </el-table>
+            <el-empty v-if="!loadingPosts && myPosts.length === 0" description="还没有发布任何帖子" />
+          </div>
+        </el-tab-pane>
       </el-tabs>
     </div>
   </div>
@@ -183,6 +221,7 @@ import { Camera } from '@element-plus/icons-vue'
 import { getUserInfo, updateUserProfile, changePassword, uploadAvatar, setAvatar } from '@/api/user'
 import { getUserInfo as getStoredUserInfo, setUserInfo as setStoredUserInfo } from '@/utils/auth'
 import { getMyFavorites } from '@/api/favorite'
+import { getMyPosts, deletePost } from '@/api/post'
 import { getSchoolList } from '@/api/school'
 import request from '@/utils/request'
 
@@ -196,6 +235,9 @@ const activeTab = ref('uploads')
 const avatarInputRef = ref(null)
 const avatarUploading = ref(false)
 const defaultAvatar = 'https://cube.elemecdn.com/0/88/03b0d39583f48206768a7534e55bcpng.png'
+
+const myPosts = ref([])
+const loadingPosts = ref(false)
 
 const showEditDialog = ref(false)
 const showPasswordDialog = ref(false)
@@ -321,6 +363,40 @@ const loadMyFavorites = async () => {
   }
 }
 
+const loadMyPosts = async () => {
+  loadingPosts.value = true
+  try {
+    const res = await getMyPosts()
+    if (res && res.success) {
+      myPosts.value = res.result || []
+    }
+  } catch (error) {
+    console.error('获取帖子列表错误:', error)
+  } finally {
+    loadingPosts.value = false
+  }
+}
+
+const handleDeletePost = async (row) => {
+  try {
+    await ElMessageBox.confirm('确定要删除这个帖子吗？', '提示', {
+      confirmButtonText: '确定', cancelButtonText: '取消', type: 'warning'
+    })
+    const res = await deletePost(row.id)
+    if (res && res.success) {
+      ElMessage.success('删除成功')
+      loadMyPosts()
+    } else {
+      ElMessage.error(res.message || '删除失败')
+    }
+  } catch (error) {
+    if (error !== 'cancel') {
+      console.error('删除帖子错误:', error)
+      ElMessage.error('删除失败')
+    }
+  }
+}
+
 const formatDate = (dateStr) => {
   if (!dateStr) return ''
   return new Date(dateStr).toLocaleDateString('zh-CN')
@@ -356,7 +432,13 @@ const handleUpdateProfile = async () => {
     if (res && res.success) {
       ElMessage.success(res.message || '资料更新成功')
       showEditDialog.value = false
-      await loadUserInfo()
+      if (res.result) {
+        userInfo.value = res.result
+        populateEditForm(res.result)
+        setStoredUserInfo(res.result)
+      } else {
+        await loadUserInfo()
+      }
     } else {
       ElMessage.error(res.message || '更新失败')
     }
@@ -451,6 +533,7 @@ onMounted(() => {
   loadUserInfo()
   loadMyUploads()
   loadMyFavorites()
+  loadMyPosts()
 })
 </script>
 
@@ -463,6 +546,7 @@ onMounted(() => {
 .role-badge { background: #E6A23C; color: white; padding: 2px 8px; border-radius: 4px; font-size: 12px; display: inline-block; margin-bottom: 10px; }
 .desc { color: #909399; font-size: 14px; margin: 0; }
 .card-header { display: flex; justify-content: space-between; align-items: center; }
+.tab-header { display: flex; justify-content: space-between; align-items: center; }
 .header-buttons { display: flex; gap: 10px; }
 .avatar-tip { color: #409EFF; font-size: 12px; margin: 4px 0 0; }
 

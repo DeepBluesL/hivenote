@@ -43,6 +43,11 @@ const routes = [
     component: () => import('../views/community/PostCreate.vue')
   },
   {
+    path: '/community/post/edit/:id',
+    name: 'PostEdit',
+    component: () => import('../views/community/PostEdit.vue')
+  },
+  {
     path: '/community/post/:id',
     name: 'PostDetail',
     component: () => import('../views/community/PostDetail.vue')

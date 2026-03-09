@@ -67,14 +67,15 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
 import { ArrowDown, Bell } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import { getUserInfo as getStoredUserInfo } from '@/utils/auth'
 import { getNotifications, getUnreadNotificationCount, markNotificationRead, markAllNotificationsRead } from '@/api/user'
 
 const router = useRouter()
+const route = useRoute()
 const userInfo = ref(null)
 const notifications = ref([])
 const unreadCount = ref(0)
@@ -150,6 +151,10 @@ const handleCommand = (command) => {
     router.push('/user/profile')
   }
 }
+
+watch(() => route.path, () => {
+  userInfo.value = getStoredUserInfo()
+})
 
 onMounted(() => {
   userInfo.value = getStoredUserInfo()

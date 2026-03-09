@@ -102,6 +102,63 @@ public class PostController {
     }
 
     /**
+     * 我的帖子列表
+     */
+    @GetMapping("/myList")
+    public Result<List<Post>> getMyPosts(@RequestHeader("accessToken") String token) {
+        User currentUser = UserController.sessionMap.get(token);
+        if (currentUser == null) {
+            return Result.error(401, "请先登录");
+        }
+
+        QueryWrapper<Post> qw = new QueryWrapper<>();
+        qw.eq("user_id", currentUser.getId());
+        qw.orderByDesc("create_time");
+        return Result.success(postService.list(qw));
+    }
+
+    /**
+     * 编辑帖子（仅作者）
+     */
+    @PostMapping("/edit")
+    public Result<Object> editPost(@RequestHeader("accessToken") String token,
+                                   @RequestBody Post updatePost) {
+        User currentUser = UserController.sessionMap.get(token);
+        if (currentUser == null) {
+            return Result.error(401, "请先登录");
+        }
+
+        if (updatePost.getId() == null) {
+            return Result.error("帖子ID不能为空");
+        }
+
+        Post post = postService.getById(updatePost.getId());
+        if (post == null) {
+            return Result.error("帖子不存在");
+        }
+
+        if (!post.getUserId().equals(currentUser.getId())) {
+            return Result.error(403, "只能编辑自己的帖子");
+        }
+
+        if (updatePost.getTitle() != null && !updatePost.getTitle().trim().isEmpty()) {
+            post.setTitle(updatePost.getTitle().trim());
+        }
+        if (updatePost.getContent() != null && !updatePost.getContent().trim().isEmpty()) {
+            post.setContent(updatePost.getContent().trim());
+        }
+        if (updatePost.getImages() != null) {
+            post.setImages(updatePost.getImages());
+        }
+        post.setNickname(currentUser.getNickname() != null ? currentUser.getNickname() : currentUser.getUsername());
+        post.setAvatar(currentUser.getAvatar());
+        post.setUpdateTime(new Date());
+
+        postService.updateById(post);
+        return Result.success("编辑成功");
+    }
+
+    /**
      * 删除帖子（作者或管理员）
      */
     @PostMapping("/delete/{id}")

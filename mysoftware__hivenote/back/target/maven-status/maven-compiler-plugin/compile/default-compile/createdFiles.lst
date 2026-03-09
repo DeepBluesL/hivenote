@@ -3,6 +3,7 @@ com\hivenote\config\DatabaseInitializer.class
 com\hivenote\controller\NoteController.class
 com\hivenote\mapper\FavoriteMapper.class
 com\hivenote\controller\PostController.class
+com\hivenote\config\JacksonConfig.class
 com\hivenote\service\impl\CommentServiceImpl.class
 com\hivenote\service\IPostService.class
 com\hivenote\mapper\NoteMapper.class

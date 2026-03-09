@@ -106,6 +106,18 @@ public class Result<T> implements Serializable {
     }
 
     /**
+     * 成功 - 带数据和自定义消息
+     */
+    public static <T> Result<T> success(T data, String msg) {
+        Result<T> r = new Result<>();
+        r.setSuccess(true);
+        r.setCode(200);
+        r.setResult(data);
+        r.setMessage(msg);
+        return r;
+    }
+
+    /**
      * 成功 - 自定义消息
      */
     public static <T> Result<T> success(String msg) {

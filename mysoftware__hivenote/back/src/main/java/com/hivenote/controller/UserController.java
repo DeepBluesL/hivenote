@@ -27,6 +27,23 @@ public class UserController {
 
     public static Map<String, User> sessionMap = new HashMap<>();
 
+    private Map<String, Object> buildUserInfoMap(User user) {
+        Map<String, Object> info = new HashMap<>();
+        info.put("id", user.getId());
+        info.put("username", user.getUsername());
+        info.put("nickname", user.getNickname());
+        info.put("email", user.getEmail());
+        info.put("avatar", user.getAvatar());
+        info.put("status", user.getStatus());
+        info.put("type", user.getType() != null ? user.getType() : 0);
+        info.put("school", user.getSchool());
+        info.put("showEmail", user.getShowEmail() != null ? user.getShowEmail() : 1);
+        info.put("showStudentId", user.getShowStudentId() != null ? user.getShowStudentId() : 1);
+        info.put("avatarBanned", user.getAvatarBanned() != null ? user.getAvatarBanned() : 0);
+        info.put("createTime", user.getCreateTime());
+        return info;
+    }
+
     /**
      * 1. 登录
      * 前端: request({ url: '/user/login', method: 'post', data: data })
@@ -67,23 +84,7 @@ public class UserController {
         // 构造返回数据
         Map<String, Object> resultMap = new HashMap<>();
         resultMap.put("token", token);
-
-        // 用户信息（不包含密码）
-        Map<String, Object> userInfo = new HashMap<>();
-        userInfo.put("id", user.getId());
-        userInfo.put("username", user.getUsername());
-        userInfo.put("nickname", user.getNickname());
-        userInfo.put("email", user.getEmail());
-        userInfo.put("avatar", user.getAvatar());
-        userInfo.put("status", user.getStatus());
-        userInfo.put("type", user.getType() != null ? user.getType() : 0);
-        userInfo.put("school", user.getSchool());
-        userInfo.put("showEmail", user.getShowEmail() != null ? user.getShowEmail() : 1);
-        userInfo.put("showStudentId", user.getShowStudentId() != null ? user.getShowStudentId() : 1);
-        userInfo.put("avatarBanned", user.getAvatarBanned() != null ? user.getAvatarBanned() : 0);
-        userInfo.put("createTime", user.getCreateTime());
-
-        resultMap.put("userInfo", userInfo);
+        resultMap.put("userInfo", buildUserInfoMap(user));
 
         return Result.success(resultMap);
     }
@@ -148,16 +149,18 @@ public class UserController {
 
     /**
      * 3. 获取个人信息
-     * 前端: request({ url: '/user/info', method: 'get' })
-     * 通过 Header 里的 accessToken 获取当前用户
+     * 每次从数据库读取最新数据，避免 sessionMap 缓存导致数据不一致
      */
     @GetMapping("/user/info")
     public Result<User> getUserInfo(@RequestHeader("accessToken") String token) {
-        User user = sessionMap.get(token);
-        if (user == null) {
+        User sessionUser = sessionMap.get(token);
+        if (sessionUser == null) {
             return Result.error(401, "登录已过期");
         }
-        // 为了安全，把密码置空再返回
+        User user = userService.getById(sessionUser.getId());
+        if (user == null) {
+            return Result.error(401, "用户不存在");
+        }
         user.setPassword(null);
         return Result.success(user);
     }
@@ -217,7 +220,7 @@ public class UserController {
      * 6. 修改个人资料
      */
     @PostMapping("/user/edit")
-    public Result<Object> updateProfile(@RequestHeader("accessToken") String token,
+    public Result<Map<String, Object>> updateProfile(@RequestHeader("accessToken") String token,
                                         @RequestBody User updateUser) {
         User currentUser = sessionMap.get(token);
         if (currentUser == null) {
@@ -226,13 +229,13 @@ public class UserController {
 
         User user = userService.getById(currentUser.getId());
 
-        if (updateUser.getNickname() != null) {
-            user.setNickname(updateUser.getNickname());
+        if (updateUser.getNickname() != null && !updateUser.getNickname().trim().isEmpty()) {
+            user.setNickname(updateUser.getNickname().trim());
         }
         if (updateUser.getEmail() != null) {
             user.setEmail(updateUser.getEmail());
         }
-        if (updateUser.getAvatar() != null) {
+        if (updateUser.getAvatar() != null && !updateUser.getAvatar().trim().isEmpty()) {
             user.setAvatar(updateUser.getAvatar());
         }
         if (updateUser.getSchool() != null) {
@@ -250,7 +253,9 @@ public class UserController {
         // 更新会话中的用户信息
         sessionMap.put(token, user);
 
-        return Result.success("资料修改成功");
+        // 返回更新后的用户信息，让前端同步
+        Map<String, Object> userInfo = buildUserInfoMap(user);
+        return Result.success(userInfo, "资料修改成功");
     }
 
     /**
@@ -410,21 +415,7 @@ public class UserController {
         // 构造返回数据
         Map<String, Object> resultMap = new HashMap<>();
         resultMap.put("token", token);
-
-        Map<String, Object> userInfo = new HashMap<>();
-        userInfo.put("id", user.getId());
-        userInfo.put("username", user.getUsername());
-        userInfo.put("nickname", user.getNickname());
-        userInfo.put("email", user.getEmail());
-        userInfo.put("avatar", user.getAvatar());
-        userInfo.put("status", user.getStatus());
-        userInfo.put("type", user.getType());
-        userInfo.put("school", user.getSchool());
-        userInfo.put("showEmail", user.getShowEmail() != null ? user.getShowEmail() : 1);
-        userInfo.put("showStudentId", user.getShowStudentId() != null ? user.getShowStudentId() : 1);
-        userInfo.put("avatarBanned", user.getAvatarBanned() != null ? user.getAvatarBanned() : 0);
-
-        resultMap.put("userInfo", userInfo);
+        resultMap.put("userInfo", buildUserInfoMap(user));
 
         System.out.println("登录成功");
         System.out.println("==================");

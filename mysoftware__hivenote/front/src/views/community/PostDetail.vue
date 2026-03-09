@@ -14,7 +14,8 @@
               <div class="post-date">{{ formatFullDate(post.createTime) }}</div>
             </div>
             <div class="post-header-actions">
-              <el-button v-if="canDelete" link type="danger" @click="handleDelete">删除帖子</el-button>
+              <el-button v-if="isAuthor" link type="warning" @click="router.push(`/community/post/edit/${post.id}`)">编辑</el-button>
+              <el-button v-if="canDelete" link type="danger" @click="handleDelete">删除</el-button>
             </div>
           </div>
 
@@ -125,11 +126,15 @@ const postImages = computed(() => {
   return post.value.images.split(',').filter(s => s.trim())
 })
 
+const isAuthor = computed(() => {
+  if (!currentUser.value?.id || !post.value) return false
+  return String(post.value.userId) === String(currentUser.value.id)
+})
+
 const canDelete = computed(() => {
   if (!currentUser.value?.id || !post.value) return false
-  const isAuthor = String(post.value.userId) === String(currentUser.value.id)
   const isAdmin = currentUser.value.type === 1
-  return isAuthor || isAdmin
+  return isAuthor.value || isAdmin
 })
 
 const canDeleteReply = (reply) => {

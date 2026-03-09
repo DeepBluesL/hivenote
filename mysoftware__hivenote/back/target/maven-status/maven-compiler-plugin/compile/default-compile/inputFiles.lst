@@ -18,6 +18,7 @@ E:\Code\hivenote\mysoftware__hivenote\back\src\main\java\com\hivenote\entity\Pos
 E:\Code\hivenote\mysoftware__hivenote\back\src\main\java\com\hivenote\service\INoteLikeService.java
 E:\Code\hivenote\mysoftware__hivenote\back\src\main\java\com\hivenote\entity\NoteLike.java
 E:\Code\hivenote\mysoftware__hivenote\back\src\main\java\com\hivenote\mapper\CommentMapper.java
+E:\Code\hivenote\mysoftware__hivenote\back\src\main\java\com\hivenote\config\JacksonConfig.java
 E:\Code\hivenote\mysoftware__hivenote\back\src\main\java\com\hivenote\entity\User.java
 E:\Code\hivenote\mysoftware__hivenote\back\src\main\java\com\hivenote\common\Result.java
 E:\Code\hivenote\mysoftware__hivenote\back\src\main\java\com\hivenote\entity\Post.java
