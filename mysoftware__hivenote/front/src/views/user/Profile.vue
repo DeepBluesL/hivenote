@@ -16,7 +16,20 @@
         </template>
 
         <div class="user-header">
-          <el-avatar :size="80" :src="userInfo.avatar || 'https://cube.elemecdn.com/0/88/03b0d39583f48206768a7534e55bcpng.png'" />
+          <div class="avatar-upload-wrapper" @click="triggerAvatarUpload">
+            <el-avatar :size="80" :src="userInfo.avatar || defaultAvatar" />
+            <div class="avatar-overlay">
+              <el-icon :size="20"><Camera /></el-icon>
+              <span>更换头像</span>
+            </div>
+            <input
+              ref="avatarInputRef"
+              type="file"
+              accept="image/jpeg,image/png,image/gif,image/webp"
+              style="display: none"
+              @change="handleAvatarChange"
+            />
+          </div>
           <div class="user-info">
             <h2>{{ userInfo.nickname || userInfo.username || '用户' }}</h2>
             <p class="role-badge">{{ userInfo.type === 1 ? '管理员' : '普通用户' }}</p>
@@ -25,6 +38,7 @@
               <template v-if="userInfo.showEmail !== 0">邮箱: {{ userInfo.email || '未设置' }} | </template>
               学校: {{ userInfo.school || '未设置' }}
             </p>
+            <p v-if="avatarUploading" class="avatar-tip">头像上传中...</p>
           </div>
         </div>
       </el-card>
@@ -57,10 +71,20 @@
               />
             </el-select>
           </el-form-item>
-          <el-form-item label="头像URL" prop="avatar">
-            <el-input v-model="editForm.avatar" placeholder="请输入头像URL" />
-            <div class="avatar-preview" v-if="editForm.avatar">
-              <el-avatar :size="60" :src="editForm.avatar" />
+          <el-form-item label="头像">
+            <div class="dialog-avatar-upload">
+              <div class="dialog-avatar-preview">
+                <el-avatar :size="80" :src="editForm.avatar || defaultAvatar" />
+              </div>
+              <el-upload
+                :auto-upload="false"
+                :show-file-list="false"
+                accept="image/jpeg,image/png,image/gif,image/webp"
+                @change="handleDialogAvatarChange"
+              >
+                <el-button size="small" type="primary">选择图片</el-button>
+              </el-upload>
+              <p class="upload-hint">支持 JPG/PNG/GIF/WEBP，不超过 5MB</p>
             </div>
           </el-form-item>
           <el-divider content-position="left">隐私设置</el-divider>
@@ -155,7 +179,8 @@ import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import NavBar from '../../components/NavBar.vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { getUserInfo, updateUserProfile, changePassword } from '@/api/user'
+import { Camera } from '@element-plus/icons-vue'
+import { getUserInfo, updateUserProfile, changePassword, uploadAvatar, setAvatar } from '@/api/user'
 import { getUserInfo as getStoredUserInfo, setUserInfo as setStoredUserInfo } from '@/utils/auth'
 import { getMyFavorites } from '@/api/favorite'
 import { getSchoolList } from '@/api/school'
@@ -168,6 +193,9 @@ const myFavorites = ref([])
 const loading = ref(false)
 const loadingFavorites = ref(false)
 const activeTab = ref('uploads')
+const avatarInputRef = ref(null)
+const avatarUploading = ref(false)
+const defaultAvatar = 'https://cube.elemecdn.com/0/88/03b0d39583f48206768a7534e55bcpng.png'
 
 const showEditDialog = ref(false)
 const showPasswordDialog = ref(false)
@@ -367,6 +395,58 @@ const handleChangePassword = async () => {
   }
 }
 
+const triggerAvatarUpload = () => {
+  avatarInputRef.value?.click()
+}
+
+const doAvatarUpload = async (file) => {
+  if (!file) return
+  if (file.size > 5 * 1024 * 1024) {
+    ElMessage.error('图片大小不能超过 5MB')
+    return
+  }
+  const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp']
+  if (!allowedTypes.includes(file.type)) {
+    ElMessage.error('只支持 JPG、PNG、GIF、WEBP 格式的图片')
+    return
+  }
+
+  avatarUploading.value = true
+  try {
+    const uploadRes = await uploadAvatar(file)
+    if (uploadRes && uploadRes.success) {
+      const avatarUrl = uploadRes.result.url
+      const setRes = await setAvatar(avatarUrl)
+      if (setRes && setRes.success) {
+        ElMessage.success('头像更新成功')
+        userInfo.value.avatar = avatarUrl
+        editForm.value.avatar = avatarUrl
+        const stored = getStoredUserInfo()
+        if (stored) {
+          stored.avatar = avatarUrl
+          stored.avatarBanned = 0
+          setStoredUserInfo(stored)
+        }
+      }
+    }
+  } catch (error) {
+    console.error('头像上传失败:', error)
+    ElMessage.error('头像上传失败，请稍后重试')
+  } finally {
+    avatarUploading.value = false
+  }
+}
+
+const handleAvatarChange = (e) => {
+  const file = e.target.files[0]
+  doAvatarUpload(file)
+  e.target.value = ''
+}
+
+const handleDialogAvatarChange = (uploadFile) => {
+  doAvatarUpload(uploadFile.raw)
+}
+
 onMounted(() => {
   loadUserInfo()
   loadMyUploads()
@@ -384,7 +464,43 @@ onMounted(() => {
 .desc { color: #909399; font-size: 14px; margin: 0; }
 .card-header { display: flex; justify-content: space-between; align-items: center; }
 .header-buttons { display: flex; gap: 10px; }
-.avatar-preview { margin-top: 10px; }
+.avatar-tip { color: #409EFF; font-size: 12px; margin: 4px 0 0; }
+
+.avatar-upload-wrapper {
+  position: relative;
+  cursor: pointer;
+  border-radius: 50%;
+  overflow: hidden;
+  width: 80px;
+  height: 80px;
+  flex-shrink: 0;
+}
+.avatar-overlay {
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.5);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: 11px;
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+.avatar-upload-wrapper:hover .avatar-overlay { opacity: 1; }
+
+.dialog-avatar-upload {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+.dialog-avatar-preview {
+  border: 2px dashed #dcdfe6;
+  border-radius: 50%;
+  padding: 2px;
+}
+.upload-hint { color: #909399; font-size: 12px; margin: 0; }
 
 .profile-tabs { background: #fff; padding: 20px; border-radius: 8px; }
 .tab-content h3 { margin-top: 0; margin-bottom: 16px; border-left: 4px solid #409EFF; padding-left: 10px; }

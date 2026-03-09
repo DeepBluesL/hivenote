@@ -8,6 +8,8 @@ E:\Code\hivenote\mysoftware__hivenote\back\src\main\java\com\hivenote\config\Log
 E:\Code\hivenote\mysoftware__hivenote\back\src\main\java\com\hivenote\utils\PasswordUtil.java
 E:\Code\hivenote\mysoftware__hivenote\back\src\main\java\com\hivenote\common\ServiceException.java
 E:\Code\hivenote\mysoftware__hivenote\back\src\main\java\com\hivenote\controller\NoteLikeController.java
+E:\Code\hivenote\mysoftware__hivenote\back\src\main\java\com\hivenote\service\INotificationService.java
+E:\Code\hivenote\mysoftware__hivenote\back\src\main\java\com\hivenote\config\DatabaseInitializer.java
 E:\Code\hivenote\mysoftware__hivenote\back\src\main\java\com\hivenote\controller\FileController.java
 E:\Code\hivenote\mysoftware__hivenote\back\src\main\java\com\hivenote\entity\Favorite.java
 E:\Code\hivenote\mysoftware__hivenote\back\src\main\java\com\hivenote\entity\Comment.java
@@ -16,7 +18,9 @@ E:\Code\hivenote\mysoftware__hivenote\back\src\main\java\com\hivenote\controller
 E:\Code\hivenote\mysoftware__hivenote\back\src\main\java\com\hivenote\service\INoteService.java
 E:\Code\hivenote\mysoftware__hivenote\back\src\main\java\com\hivenote\controller\SchoolController.java
 E:\Code\hivenote\mysoftware__hivenote\back\src\main\java\com\hivenote\entity\dto\LoginDTO.java
+E:\Code\hivenote\mysoftware__hivenote\back\src\main\java\com\hivenote\entity\Notification.java
 E:\Code\hivenote\mysoftware__hivenote\back\src\main\java\com\hivenote\controller\CommentController.java
+E:\Code\hivenote\mysoftware__hivenote\back\src\main\java\com\hivenote\service\impl\NotificationServiceImpl.java
 E:\Code\hivenote\mysoftware__hivenote\back\src\main\java\com\hivenote\service\impl\UserServiceImpl.java
 E:\Code\hivenote\mysoftware__hivenote\back\src\main\java\com\hivenote\service\IUserService.java
 E:\Code\hivenote\mysoftware__hivenote\back\src\main\java\com\hivenote\service\INoteLikeService.java
@@ -33,4 +37,5 @@ E:\Code\hivenote\mysoftware__hivenote\back\src\main\java\com\hivenote\mapper\Not
 E:\Code\hivenote\mysoftware__hivenote\back\src\main\java\com\hivenote\service\ICommentService.java
 E:\Code\hivenote\mysoftware__hivenote\back\src\main\java\com\hivenote\controller\NoteController.java
 E:\Code\hivenote\mysoftware__hivenote\back\src\main\java\com\hivenote\service\IFavoriteService.java
+E:\Code\hivenote\mysoftware__hivenote\back\src\main\java\com\hivenote\mapper\NotificationMapper.java
 E:\Code\hivenote\mysoftware__hivenote\back\src\main\java\com\hivenote\service\impl\FavoriteServiceImpl.java

@@ -237,10 +237,16 @@
                   <el-tag v-else-if="row.status === -1" type="danger">已封禁</el-tag>
                 </template>
               </el-table-column>
-              <el-table-column label="操作" width="160" fixed="right">
+              <el-table-column label="操作" width="220" fixed="right">
                 <template #default="{ row }">
                   <el-button v-if="row.status === 0" link type="danger" @click="handleBanUser(row)">封禁</el-button>
                   <el-button v-if="row.status === -1" link type="success" @click="handleUnbanUser(row)">解封</el-button>
+                  <el-button
+                    link
+                    type="warning"
+                    @click="handleBanAvatar(row)"
+                    :disabled="!row.avatar || row.avatar === defaultAvatarUrl"
+                  >封禁头像</el-button>
                 </template>
               </el-table-column>
             </el-table>
@@ -302,7 +308,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { Clock, Select, Close } from '@element-plus/icons-vue'
 import { getAdminNoteList, approveNote, rejectNote, setNoteFeatured, setNoteExamFeatured } from '@/api/note'
 import { getAdminCommentList, deleteComment } from '@/api/comment'
-import { getAdminUserList, banUser, unbanUser } from '@/api/user'
+import { getAdminUserList, banUser, unbanUser, banAvatar } from '@/api/user'
 import { getUserInfo as getUserInfoStorage, clearAuth } from '@/utils/auth'
 
 const router = useRouter()
@@ -503,6 +509,28 @@ const handleUnbanUser = async (row) => {
     if (res && res.success) {
       ElMessage.success('用户已解封')
       row.status = 0
+    } else {
+      ElMessage.error(res?.message || '操作失败')
+    }
+  } catch (error) {
+    if (error !== 'cancel') ElMessage.error('操作失败')
+  }
+}
+
+const defaultAvatarUrl = 'https://cube.elemecdn.com/0/88/03b0d39583f48206768a7534e55bcpng.png'
+
+const handleBanAvatar = async (row) => {
+  try {
+    await ElMessageBox.confirm(
+      `确定要封禁用户 "${row.nickname || row.username}" 的头像吗？\n头像将被重置为默认头像，该用户会收到系统通知。`,
+      '封禁头像',
+      { type: 'warning', confirmButtonText: '确认封禁', cancelButtonText: '取消' }
+    )
+    const res = await banAvatar(row.id)
+    if (res && res.success) {
+      ElMessage.success('已封禁用户头像并发送通知')
+      row.avatar = defaultAvatarUrl
+      row.avatarBanned = 1
     } else {
       ElMessage.error(res?.message || '操作失败')
     }

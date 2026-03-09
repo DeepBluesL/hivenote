@@ -3,13 +3,17 @@ package com.hivenote.controller;
 import cn.hutool.core.util.IdUtil;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.hivenote.common.Result;
+import com.hivenote.entity.Notification;
 import com.hivenote.entity.User;
+import com.hivenote.service.INotificationService;
 import com.hivenote.service.IUserService;
 import com.hivenote.utils.PasswordUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Date;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 @RestController
@@ -17,6 +21,9 @@ public class UserController {
 
     @Autowired
     private IUserService userService;
+
+    @Autowired
+    private INotificationService notificationService;
 
     public static Map<String, User> sessionMap = new HashMap<>();
 
@@ -73,6 +80,7 @@ public class UserController {
         userInfo.put("school", user.getSchool());
         userInfo.put("showEmail", user.getShowEmail() != null ? user.getShowEmail() : 1);
         userInfo.put("showStudentId", user.getShowStudentId() != null ? user.getShowStudentId() : 1);
+        userInfo.put("avatarBanned", user.getAvatarBanned() != null ? user.getAvatarBanned() : 0);
         userInfo.put("createTime", user.getCreateTime());
 
         resultMap.put("userInfo", userInfo);
@@ -414,6 +422,7 @@ public class UserController {
         userInfo.put("school", user.getSchool());
         userInfo.put("showEmail", user.getShowEmail() != null ? user.getShowEmail() : 1);
         userInfo.put("showStudentId", user.getShowStudentId() != null ? user.getShowStudentId() : 1);
+        userInfo.put("avatarBanned", user.getAvatarBanned() != null ? user.getAvatarBanned() : 0);
 
         resultMap.put("userInfo", userInfo);
 
@@ -421,5 +430,157 @@ public class UserController {
         System.out.println("==================");
 
         return Result.success(resultMap);
+    }
+
+    /**
+     * 上传并设置头像
+     */
+    @PostMapping("/user/uploadAvatar")
+    public Result<Object> uploadAvatar(@RequestHeader("accessToken") String token,
+                                       @RequestBody Map<String, String> params) {
+        User currentUser = sessionMap.get(token);
+        if (currentUser == null) {
+            return Result.error(401, "登录已过期");
+        }
+
+        String avatarUrl = params.get("avatarUrl");
+        if (avatarUrl == null || avatarUrl.trim().isEmpty()) {
+            return Result.error("头像URL不能为空");
+        }
+
+        User user = userService.getById(currentUser.getId());
+        user.setAvatar(avatarUrl);
+        user.setAvatarBanned(0);
+        userService.updateById(user);
+
+        sessionMap.put(token, user);
+
+        Map<String, String> result = new HashMap<>();
+        result.put("avatar", avatarUrl);
+        return Result.success(result);
+    }
+
+    /**
+     * 管理员封禁用户头像
+     */
+    @PostMapping("/user/admin/banAvatar/{id}")
+    public Result<Object> banAvatar(@PathVariable Long id,
+                                    @RequestHeader("accessToken") String token) {
+        User currentUser = sessionMap.get(token);
+        if (currentUser == null) {
+            return Result.error(401, "请先登录");
+        }
+        if (currentUser.getType() == null || currentUser.getType() != 1) {
+            return Result.error(403, "无权操作");
+        }
+
+        User user = userService.getById(id);
+        if (user == null) {
+            return Result.error("用户不存在");
+        }
+
+        String defaultAvatar = "https://cube.elemecdn.com/0/88/03b0d39583f48206768a7534e55bcpng.png";
+        user.setAvatar(defaultAvatar);
+        user.setAvatarBanned(1);
+        userService.updateById(user);
+
+        // 同步更新 session 中的用户信息
+        sessionMap.forEach((k, v) -> {
+            if (v.getId().equals(id)) {
+                v.setAvatar(defaultAvatar);
+                v.setAvatarBanned(1);
+            }
+        });
+
+        Notification notification = new Notification();
+        notification.setId(IdUtil.getSnowflakeNextId());
+        notification.setUserId(id);
+        notification.setTitle("头像违规通知");
+        notification.setContent("您的头像因不符合社区规范已被管理员重置为默认头像，请上传合规的头像。");
+        notification.setType(1);
+        notification.setIsRead(0);
+        notification.setCreateTime(new Date());
+        notificationService.save(notification);
+
+        return Result.success("已封禁用户头像并发送通知");
+    }
+
+    /**
+     * 获取当前用户的通知列表
+     */
+    @GetMapping("/user/notifications")
+    public Result<List<Notification>> getNotifications(@RequestHeader("accessToken") String token) {
+        User currentUser = sessionMap.get(token);
+        if (currentUser == null) {
+            return Result.error(401, "登录已过期");
+        }
+
+        QueryWrapper<Notification> qw = new QueryWrapper<>();
+        qw.eq("user_id", currentUser.getId());
+        qw.orderByDesc("create_time");
+        qw.last("LIMIT 50");
+
+        return Result.success(notificationService.list(qw));
+    }
+
+    /**
+     * 标记通知为已读
+     */
+    @PostMapping("/user/notifications/read/{id}")
+    public Result<Object> markNotificationRead(@PathVariable Long id,
+                                               @RequestHeader("accessToken") String token) {
+        User currentUser = sessionMap.get(token);
+        if (currentUser == null) {
+            return Result.error(401, "登录已过期");
+        }
+
+        Notification notification = notificationService.getById(id);
+        if (notification == null || !notification.getUserId().equals(currentUser.getId())) {
+            return Result.error("通知不存在");
+        }
+
+        notification.setIsRead(1);
+        notificationService.updateById(notification);
+
+        return Result.success("已标记为已读");
+    }
+
+    /**
+     * 标记所有通知为已读
+     */
+    @PostMapping("/user/notifications/readAll")
+    public Result<Object> markAllNotificationsRead(@RequestHeader("accessToken") String token) {
+        User currentUser = sessionMap.get(token);
+        if (currentUser == null) {
+            return Result.error(401, "登录已过期");
+        }
+
+        notificationService.update(
+                new com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper<Notification>()
+                        .eq("user_id", currentUser.getId())
+                        .eq("is_read", 0)
+                        .set("is_read", 1)
+        );
+
+        return Result.success("已全部标记为已读");
+    }
+
+    /**
+     * 获取未读通知数量
+     */
+    @GetMapping("/user/notifications/unreadCount")
+    public Result<Long> getUnreadCount(@RequestHeader("accessToken") String token) {
+        User currentUser = sessionMap.get(token);
+        if (currentUser == null) {
+            return Result.error(401, "登录已过期");
+        }
+
+        long count = notificationService.count(
+                new QueryWrapper<Notification>()
+                        .eq("user_id", currentUser.getId())
+                        .eq("is_read", 0)
+        );
+
+        return Result.success(count);
     }
 }

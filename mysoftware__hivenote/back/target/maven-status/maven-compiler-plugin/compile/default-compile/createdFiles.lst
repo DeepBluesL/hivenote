@@ -1,5 +1,7 @@
 com\hivenote\common\GlobalExceptionHandler.class
+com\hivenote\config\DatabaseInitializer.class
 com\hivenote\controller\NoteController.class
+com\hivenote\entity\Notification.class
 com\hivenote\mapper\FavoriteMapper.class
 com\hivenote\utils\PasswordUtil.class
 com\hivenote\service\impl\UserServiceImpl.class
@@ -14,6 +16,7 @@ com\hivenote\config\WebMvcConfig.class
 com\hivenote\controller\NoteLikeController.class
 com\hivenote\service\INoteService.class
 com\hivenote\service\IFavoriteService.class
+com\hivenote\service\impl\NotificationServiceImpl.class
 com\hivenote\config\LoginInterceptor.class
 com\hivenote\common\ServiceException.class
 com\hivenote\controller\FileController.class
@@ -27,10 +30,12 @@ com\hivenote\entity\Note.class
 com\hivenote\common\Result.class
 com\hivenote\controller\FavoriteController.class
 com\hivenote\mapper\UserMapper.class
+com\hivenote\service\INotificationService.class
 com\hivenote\controller\CommentController.class
 com\hivenote\HiveNoteApplication.class
 com\hivenote\controller\UserController.class
 com\hivenote\service\ICommentService.class
+com\hivenote\mapper\NotificationMapper.class
 com\hivenote\mapper\NoteLikeMapper.class
 com\hivenote\entity\User.class
 com\hivenote\controller\SchoolController.class

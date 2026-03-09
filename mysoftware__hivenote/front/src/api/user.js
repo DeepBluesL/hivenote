@@ -112,3 +112,83 @@ export const unbanUser = (id) => {
     method: 'post'
   })
 }
+
+/**
+ * 上传头像图片
+ */
+export const uploadAvatar = (file) => {
+  const formData = new FormData()
+  formData.append('file', file)
+  return request({
+    url: '/file/uploadAvatar',
+    method: 'post',
+    data: formData,
+    headers: { 'Content-Type': 'multipart/form-data' },
+    timeout: 30000
+  })
+}
+
+/**
+ * 设置用户头像URL
+ */
+export const setAvatar = (avatarUrl) => {
+  return request({
+    url: '/user/uploadAvatar',
+    method: 'post',
+    data: { avatarUrl }
+  })
+}
+
+/**
+ * 管理员封禁用户头像
+ */
+export const banAvatar = (id) => {
+  return request({
+    url: `/user/admin/banAvatar/${id}`,
+    method: 'post'
+  })
+}
+
+/**
+ * 获取通知列表
+ */
+export const getNotifications = () => {
+  return request({
+    url: '/user/notifications',
+    method: 'get',
+    silent: true
+  })
+}
+
+/**
+ * 标记通知已读
+ */
+export const markNotificationRead = (id) => {
+  return request({
+    url: `/user/notifications/read/${id}`,
+    method: 'post',
+    silent: true
+  })
+}
+
+/**
+ * 全部标记已读
+ */
+export const markAllNotificationsRead = () => {
+  return request({
+    url: '/user/notifications/readAll',
+    method: 'post',
+    silent: true
+  })
+}
+
+/**
+ * 获取未读通知数量
+ */
+export const getUnreadNotificationCount = () => {
+  return request({
+    url: '/user/notifications/unreadCount',
+    method: 'get',
+    silent: true
+  })
+}

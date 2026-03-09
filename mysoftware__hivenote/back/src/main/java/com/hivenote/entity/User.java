@@ -76,6 +76,11 @@ public class User implements Serializable {
     private Integer showStudentId;
 
     /**
+     * 头像是否被封禁 (0:正常 1:已封禁)
+     */
+    private Integer avatarBanned;
+
+    /**
      * 注册时间
      * MyBatis-Plus 会自动将数据库的 create_time 映射为 createTime
      */
