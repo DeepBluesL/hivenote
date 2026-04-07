@@ -75,6 +75,21 @@ public class Note implements Serializable {
     private Integer favoriteCount;
 
     /**
+     * 标签 (逗号分隔，如 "期末复习,考试重点,高分笔记")
+     */
+    private String tags;
+
+    /**
+     * 是否为推荐笔记 (0:否 1:是)
+     */
+    private Integer featured;
+
+    /**
+     * 是否为期末冲刺推荐 (0:否 1:是)
+     */
+    private Integer examFeatured;
+
+    /**
      * 状态 (1:正常 0:审核中)
      */
     private Integer status;

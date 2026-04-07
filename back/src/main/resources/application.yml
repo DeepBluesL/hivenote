@@ -19,11 +19,12 @@ file:
   upload-path: D:/hivenote/files/
   access-path: /file/view/
 
+google:
+  client-id: 970752287924-vuaka9fp3cp59fj84l2ovlmhrmq0vp4n.apps.googleusercontent.com
+  client-secret: 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
+  redirect-uri: http://localhost:8080/zwz/user/google/callback
+  frontend-url: http://localhost:5173
+
 mybatis-plus:
   configuration:
     log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
-# DeepSeek AI配置
-deepseek:
-  api:
-    key: sk-您的DeepSeek API密钥  # 请替换为您的真实密钥
-    url: https://api.deepseek.com/v1/chat/completions

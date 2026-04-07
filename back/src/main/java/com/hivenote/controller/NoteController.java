@@ -30,6 +30,7 @@ public class NoteController {
                                        String keyword,
                                        String category,
                                        String school,
+                                       String tag,
                                        @RequestParam(defaultValue = "newest") String sortBy) {
         Page<Note> pageParam = new Page<>(page, size);
         
@@ -47,6 +48,9 @@ public class NoteController {
         }
         if (StrUtil.isNotBlank(school)) {
             qw.eq("school", school);
+        }
+        if (StrUtil.isNotBlank(tag)) {
+            qw.like("tags", tag);
         }
         qw.eq("status", 1);
         qw.eq("del_flag", 0);
@@ -93,6 +97,50 @@ public class NoteController {
         qw.eq("del_flag", 0);
         qw.orderByDesc("create_time");
         qw.last("LIMIT " + limit);
+        return Result.success(noteService.list(qw));
+    }
+
+    /**
+     * 推荐笔记 (管理员置顶优先，其余按综合热度排序)
+     */
+    @GetMapping("/recommend")
+    public Result<java.util.List<Note>> getRecommendNotes(@RequestParam(defaultValue = "6") int limit) {
+        QueryWrapper<Note> qw = new QueryWrapper<>();
+        qw.eq("status", 1);
+        qw.eq("del_flag", 0);
+        qw.last("ORDER BY IFNULL(featured,0) DESC, " +
+                "IFNULL(like_count,0)*3 + IFNULL(view_count,0) + IFNULL(download_count,0)*2 DESC " +
+                "LIMIT " + limit);
+        return Result.success(noteService.list(qw));
+    }
+
+    /**
+     * 期末冲刺笔记 (管理员推荐优先，按标签或标题关键词匹配)
+     */
+    @GetMapping("/examSprint")
+    public Result<java.util.List<Note>> getExamSprintNotes(
+            @RequestParam(defaultValue = "8") int limit,
+            String tag) {
+        QueryWrapper<Note> qw = new QueryWrapper<>();
+        qw.eq("status", 1);
+        qw.eq("del_flag", 0);
+
+        if (StrUtil.isNotBlank(tag)) {
+            qw.and(w -> w.like("tags", tag).or().eq("exam_featured", 1));
+        } else {
+            qw.and(w -> w.like("tags", "期末")
+                    .or().like("tags", "复习")
+                    .or().like("tags", "考试")
+                    .or().like("tags", "冲刺")
+                    .or().like("title", "期末")
+                    .or().like("title", "复习")
+                    .or().like("title", "考试")
+                    .or().eq("exam_featured", 1));
+        }
+
+        qw.last("ORDER BY IFNULL(exam_featured,0) DESC, " +
+                "IFNULL(like_count,0)*2 + IFNULL(view_count,0) + IFNULL(download_count,0) DESC " +
+                "LIMIT " + limit);
         return Result.success(noteService.list(qw));
     }
 
@@ -181,9 +229,16 @@ public class NoteController {
         }
         note.setViewCount(0);
         note.setDownloadCount(0);
+        note.setLikeCount(0);
+        note.setFavoriteCount(0);
+        note.setFeatured(0);
+        note.setExamFeatured(0);
         note.setStatus(0);
         note.setDelFlag(0);
         note.setCreateTime(new java.util.Date());
+        if (note.getTags() == null) {
+            note.setTags("");
+        }
 
         System.out.println("生成的笔记ID: " + note.getId());
         System.out.println("创建人: " + note.getCreateBy());
@@ -432,5 +487,63 @@ public class NoteController {
         } else {
             return Result.error("操作失败");
         }
+    }
+
+    /**
+     * 10. 管理员设置/取消推荐笔记
+     */
+    @PostMapping("/admin/setFeatured/{id}")
+    public Result<Object> setFeatured(@PathVariable String id,
+                                      @RequestParam int featured,
+                                      @RequestHeader("accessToken") String token) {
+        User currentUser = UserController.sessionMap.get(token);
+        if (currentUser == null) {
+            return Result.error(401, "请先登录");
+        }
+        if (currentUser.getType() == null || currentUser.getType() != 1) {
+            return Result.error(403, "无权操作");
+        }
+
+        Note note = noteService.getById(id);
+        if (note == null) {
+            return Result.error("笔记不存在");
+        }
+
+        note.setFeatured(featured);
+        note.setUpdateBy(currentUser.getUsername());
+        note.setUpdateTime(new java.util.Date());
+        boolean updated = noteService.updateById(note);
+
+        return updated ? Result.success(featured == 1 ? "已设为推荐" : "已取消推荐")
+                       : Result.error("操作失败");
+    }
+
+    /**
+     * 11. 管理员设置/取消期末冲刺推荐
+     */
+    @PostMapping("/admin/setExamFeatured/{id}")
+    public Result<Object> setExamFeatured(@PathVariable String id,
+                                          @RequestParam int examFeatured,
+                                          @RequestHeader("accessToken") String token) {
+        User currentUser = UserController.sessionMap.get(token);
+        if (currentUser == null) {
+            return Result.error(401, "请先登录");
+        }
+        if (currentUser.getType() == null || currentUser.getType() != 1) {
+            return Result.error(403, "无权操作");
+        }
+
+        Note note = noteService.getById(id);
+        if (note == null) {
+            return Result.error("笔记不存在");
+        }
+
+        note.setExamFeatured(examFeatured);
+        note.setUpdateBy(currentUser.getUsername());
+        note.setUpdateTime(new java.util.Date());
+        boolean updated = noteService.updateById(note);
+
+        return updated ? Result.success(examFeatured == 1 ? "已设为期末冲刺推荐" : "已取消期末冲刺推荐")
+                       : Result.error("操作失败");
     }
 }

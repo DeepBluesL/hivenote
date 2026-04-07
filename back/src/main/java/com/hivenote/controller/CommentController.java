@@ -63,6 +63,7 @@ public class CommentController {
         map.put("content", c.getContent());
         map.put("username", c.getUsername());
         map.put("nickname", c.getNickname());
+        map.put("userType", c.getUserType() != null ? c.getUserType() : 0);
         map.put("createTime", c.getCreateTime());
         return map;
     }
@@ -88,6 +89,7 @@ public class CommentController {
         comment.setId(IdUtil.getSnowflakeNextIdStr());
         comment.setUsername(currentUser.getUsername());
         comment.setNickname(currentUser.getNickname());
+        comment.setUserType(currentUser.getType() != null ? currentUser.getType() : 0);
         comment.setCreateTime(new Date());
         comment.setDelFlag(0);
 
@@ -101,7 +103,7 @@ public class CommentController {
     }
 
     /**
-     * 删除评论
+     * 删除评论（本人或管理员可删除）
      */
     @DeleteMapping("/del/{id}")
     public Result<Object> delete(@PathVariable String id,
@@ -116,15 +118,15 @@ public class CommentController {
             return Result.error("评论不存在");
         }
 
-        if (!currentUser.getUsername().equals(comment.getUsername())) {
+        boolean isAdmin = currentUser.getType() != null && currentUser.getType() == 1;
+        boolean isOwner = currentUser.getUsername().equals(comment.getUsername());
+        if (!isAdmin && !isOwner) {
             return Result.error("无权删除他人评论");
         }
 
-        // 软删除评论及其所有回复
         comment.setDelFlag(1);
         commentService.updateById(comment);
 
-        // 同时删除该评论下的所有回复
         QueryWrapper<Comment> qw = new QueryWrapper<>();
         qw.eq("parent_id", id);
         List<Comment> replies = commentService.list(qw);
@@ -134,6 +136,37 @@ public class CommentController {
         }
 
         return Result.success("删除成功");
+    }
+
+    /**
+     * 管理员获取所有评论列表（分页）
+     */
+    @GetMapping("/admin/list")
+    public Result<Object> getAdminCommentList(@RequestParam(defaultValue = "1") int page,
+                                             @RequestParam(defaultValue = "20") int size,
+                                             String keyword,
+                                             @RequestHeader("accessToken") String token) {
+        User currentUser = UserController.sessionMap.get(token);
+        if (currentUser == null) {
+            return Result.error(401, "请先登录");
+        }
+        if (currentUser.getType() == null || currentUser.getType() != 1) {
+            return Result.error(403, "无权访问");
+        }
+
+        com.baomidou.mybatisplus.extension.plugins.pagination.Page<Comment> pageParam =
+                new com.baomidou.mybatisplus.extension.plugins.pagination.Page<>(page, size);
+        QueryWrapper<Comment> qw = new QueryWrapper<>();
+        qw.eq("del_flag", 0);
+        if (keyword != null && !keyword.trim().isEmpty()) {
+            qw.and(w -> w.like("content", keyword)
+                    .or().like("nickname", keyword)
+                    .or().like("username", keyword));
+        }
+        qw.orderByDesc("create_time");
+
+        var result = commentService.page(pageParam, qw);
+        return Result.success(result);
     }
 
     /**

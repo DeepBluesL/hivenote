@@ -39,6 +39,8 @@ public class WebMvcConfig implements WebMvcConfigurer {
                         "/user/login",       // 新的登录接口
                         "/user/adminLogin",
                         "/user/regist",      // 注册接口
+                        "/user/google/login",  // Google登录跳转
+                        "/user/google/callback", // Google登录回调
                         "/file/view/**",     // 文件预览（公开）
                         "/file/download/**", // 文件下载（公开）
                         "/note/list",        // 笔记列表（公开访问）
@@ -46,9 +48,15 @@ public class WebMvcConfig implements WebMvcConfigurer {
                         "/note/download/**", // 增加下载次数（公开）
                         "/note/hot",         // 热门笔记（公开）
                         "/note/latest",      // 最新笔记（公开）
+                        "/note/recommend",   // 推荐笔记（公开）
+                        "/note/examSprint",  // 期末冲刺笔记（公开）
                         "/note/stats",       // 社区统计（公开）
                         "/comment/getAllByPage", // 评论列表（公开）
                         "/comment/recent",   // 最近评论（公开）
+                        "/post/hot",         // 热门帖子（公开）
+                        "/post/list",        // 帖子列表（公开）
+                        "/post/detail/**",   // 帖子详情（公开）
+                        "/post/reply/list/**", // 帖子回复列表（公开）
                         "/school/**",        // 学校列表（公开）
                         "/error",            // 系统错误页
                         "/doc.html",         // Swagger文档 (如果有)

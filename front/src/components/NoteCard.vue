@@ -24,6 +24,18 @@
         {{ note.summary || note.description || '暂无简介...' }}
       </p>
 
+      <!-- 标签 -->
+      <div class="card-tags" v-if="note.tags">
+        <el-tag
+          v-for="tag in parseTags(note.tags)"
+          :key="tag"
+          size="small"
+          type="info"
+          effect="plain"
+          class="card-tag-item"
+        >{{ tag }}</el-tag>
+      </div>
+
       <!-- 底部：作者与数据 -->
       <div class="card-footer">
         <div class="author-info">
@@ -69,7 +81,11 @@ const props = defineProps({
   }
 })
 
-// 根据分类动态改变 Tag 颜色
+const parseTags = (tagsStr) => {
+  if (!tagsStr) return []
+  return tagsStr.split(',').map(t => t.trim()).filter(t => t)
+}
+
 const categoryType = computed(() => {
   const cat = props.note.category
   if (!cat) return 'info'
@@ -134,6 +150,16 @@ const handleClick = () => {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.card-tags {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+.card-tag-item {
+  font-size: 11px;
 }
 
 .summary {

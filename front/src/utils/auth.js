@@ -1,82 +1,64 @@
-const TokenKey = 'token'
-const UserInfoKey = 'userInfo'
+/**
+ * 用户认证相关工具函数
+ */
 
-// 获取token
-export function getToken() {
-  return localStorage.getItem(TokenKey)
+const TOKEN_KEY = 'token'
+const USER_INFO_KEY = 'userInfo'
+
+/**
+ * 获取 Token
+ */
+export const getToken = () => {
+  return localStorage.getItem(TOKEN_KEY)
 }
 
-// 设置token
-export function setToken(token) {
-  return localStorage.setItem(TokenKey, token)
+/**
+ * 设置 Token
+ */
+export const setToken = (token) => {
+  localStorage.setItem(TOKEN_KEY, token)
 }
 
-// 移除token
-export function removeToken() {
-  return localStorage.removeItem(TokenKey)
+/**
+ * 移除 Token
+ */
+export const removeToken = () => {
+  localStorage.removeItem(TOKEN_KEY)
 }
 
-// 获取用户信息
-export function getUserInfo() {
-  const userInfo = localStorage.getItem(UserInfoKey)
+/**
+ * 获取用户信息
+ */
+export const getUserInfo = () => {
+  const userInfo = localStorage.getItem(USER_INFO_KEY)
   return userInfo ? JSON.parse(userInfo) : null
 }
 
-// 设置用户信息
-export function setUserInfo(userInfo) {
-  return localStorage.setItem(UserInfoKey, JSON.stringify(userInfo))
+/**
+ * 设置用户信息
+ */
+export const setUserInfo = (userInfo) => {
+  localStorage.setItem(USER_INFO_KEY, JSON.stringify(userInfo))
 }
 
-// 移除用户信息
-export function removeUserInfo() {
-  return localStorage.removeItem(UserInfoKey)
+/**
+ * 移除用户信息
+ */
+export const removeUserInfo = () => {
+  localStorage.removeItem(USER_INFO_KEY)
 }
 
-// 清除所有认证信息（登出）
-export function clearAuth() {
+/**
+ * 清除所有认证信息
+ */
+export const clearAuth = () => {
   removeToken()
   removeUserInfo()
-  // 可选：清除其他相关数据
-  localStorage.removeItem('userRole')
-  localStorage.removeItem('permissions')
 }
 
-// 检查是否已登录
-export function isLoggedIn() {
+/**
+ * 检查是否已登录
+ */
+export const isLoggedIn = () => {
   return !!getToken()
-}
-
-// 退出登录（兼容旧代码）
-export function logout() {
-  clearAuth()
-}
-
-// 检查是否是管理员
-export function isAdmin() {
-  const userInfo = getUserInfo()
-  return userInfo && userInfo.type === 1
-}
-
-// 获取用户类型
-export function getUserType() {
-  const userInfo = getUserInfo()
-  return userInfo ? userInfo.type : null
-}
-
-// 获取用户ID
-export function getUserId() {
-  const userInfo = getUserInfo()
-  return userInfo ? userInfo.id : null
-}
-
-// 获取用户名
-export function getUsername() {
-  const userInfo = getUserInfo()
-  return userInfo ? userInfo.username : null
-}
-
-// 获取用户昵称
-export function getNickname() {
-  const userInfo = getUserInfo()
-  return userInfo ? userInfo.nickname : null
 }

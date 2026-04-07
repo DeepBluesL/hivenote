@@ -76,8 +76,23 @@ public class User implements Serializable {
     private Integer showStudentId;
 
     /**
+     * 头像是否被封禁 (0:正常 1:已封禁)
+     */
+    private Integer avatarBanned;
+
+    /**
      * 注册时间
      * MyBatis-Plus 会自动将数据库的 create_time 映射为 createTime
      */
     private Date createTime;
+
+    /**
+     * Google 账号唯一ID (nullable, 仅Google登录用户有值)
+     */
+    private String googleId;
+
+    /**
+     * Google 邮箱 (nullable, 仅Google登录用户有值)
+     */
+    private String googleEmail;
 }

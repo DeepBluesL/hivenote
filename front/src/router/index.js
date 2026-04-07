@@ -1,136 +1,151 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import { getToken, getUserInfo } from '@/utils/auth'
 
 const routes = [
   {
     path: '/',
-    redirect: '/note/list'
+    redirect: '/login' // 访问根目录默认跳去登录页
   },
-  
-  // 认证相关
   {
     path: '/login',
     name: 'Login',
-    component: () => import('@/views/auth/Login.vue')
-  },
-  {
-    path: '/admin/login',
-    name: 'AdminLogin',
-    component: () => import('@/views/auth/AdminLogin.vue')
+    // 懒加载：只有用到这个页面时才去加载代码，路径对应 src/views/auth/Login.vue
+    component: () => import('../views/auth/Login.vue')
   },
   {
     path: '/register',
     name: 'Register',
-    component: () => import('@/views/auth/Register.vue')
+    // 路径对应 src/views/auth/Register.vue
+    component: () => import('../views/auth/Register.vue')
   },
   {
-    path: '/forgot-password',
-    name: 'ForgotPassword',
-    component: () => import('@/views/auth/ForgotPassword.vue')
-  },
-  
-  // 笔记相关
+  path: '/forgot-password',
+  name: 'ForgotPassword',
+  component: () => import('../views/auth/ForgotPassword.vue')
+},
   {
-    path: '/note/list',
-    name: 'NoteList',
-    component: () => import('@/views/note/NoteList.vue')
+    path: '/home',
+    name: 'Home',
+    component: () => import('../views/note/NoteList.vue')
   },
-  {
-    path: '/note/detail/:id',
-    name: 'NoteDetail',
-    component: () => import('@/views/note/NoteDetail.vue')
-  },
-  {
-    path: '/note/upload',
-    name: 'UploadNote',
-    component: () => import('@/views/note/Upload.vue'),
-    meta: { requiresAuth: true }
-  },
-  
-  // 社区相关
   {
     path: '/community',
     name: 'Community',
-    component: () => import('@/views/community/Community.vue')
+    component: () => import('../views/community/Community.vue')
   },
-  
-  // 用户相关
+  {
+    path: '/community/posts',
+    name: 'PostList',
+    component: () => import('../views/community/PostList.vue')
+  },
+  {
+    path: '/community/post/create',
+    name: 'PostCreate',
+    component: () => import('../views/community/PostCreate.vue')
+  },
+  {
+    path: '/community/post/edit/:id',
+    name: 'PostEdit',
+    component: () => import('../views/community/PostEdit.vue')
+  },
+  {
+    path: '/community/post/:id',
+    name: 'PostDetail',
+    component: () => import('../views/community/PostDetail.vue')
+  },
+  {
+    // 动态路由：:id 是参数，比如 /note/detail/123
+    path: '/note/detail/:id',
+    name: 'NoteDetail',
+    // 路径对应 src/views/note/NoteDetail.vue
+    component: () => import('../views/note/NoteDetail.vue')
+  },
+  {
+    path: '/note/upload',
+    name: 'Upload',
+    // 路径对应 src/views/note/Upload.vue
+    component: () => import('../views/note/Upload.vue')
+  },
   {
     path: '/user/profile',
-    name: 'UserProfile',
-    component: () => import('@/views/user/Profile.vue'),
-    meta: { requiresAuth: true }
+    name: 'Profile',
+    // 路径对应 src/views/user/Profile.vue
+    component: () => import('../views/user/Profile.vue')
   },
-  
-  // 管理员相关
+  {
+    path: '/google-callback',
+    name: 'GoogleCallback',
+    component: () => import('../views/auth/GoogleCallback.vue')
+  },
+  {
+    path: '/admin/login',
+    name: 'AdminLogin',
+    component: () => import('../views/auth/AdminLogin.vue')
+  },
   {
     path: '/admin/review',
     name: 'ReviewManage',
-    component: () => import('@/views/admin/ReviewManage.vue'),
-    meta: { requiresAuth: true, requiresAdmin: true }
-  },
-  {
-    path: '/admin/audit',
-    name: 'Audit',
-    component: () => import('@/views/admin/AuditView.vue'),
-    meta: { requiresAuth: true, requiresAdmin: true }
-  },
-  
-  // 404页面
-  {
-    path: '/:pathMatch(.*)*',
-    redirect: '/note/list'
+    component: () => import('../views/admin/ReviewManage.vue'),
+    meta: { requiresAdmin: true }
   }
 ]
 
 const router = createRouter({
+  // 使用 HTML5 History 模式 (URL里没有 # 号)
   history: createWebHistory(),
   routes
 })
 
-// 路由守卫
+// 全局前置守卫 (用于拦截未登录用户)
 router.beforeEach((to, from, next) => {
-  // 公开页面列表
-  const publicPages = [
-    '/login',
-    '/admin/login',
-    '/register',
-    '/forgot-password',
-    '/note/list',
-    '/community'
-  ]
+  const token = localStorage.getItem('token')
+  const userInfoStr = localStorage.getItem('userInfo')
+  const userInfo = userInfoStr ? JSON.parse(userInfoStr) : {}
   
-  // 笔记详情页公开
-  if (to.path.startsWith('/note/detail/')) {
-    return next()
-  }
+  // 白名单：不需要登录就能访问的页面
+  const whiteList = ['/login', '/register', '/forgot-password', '/admin/login', '/community', '/google-callback']
+  const isWhiteListed = whiteList.includes(to.path) || to.path.startsWith('/community/')
   
-  const token = getToken()
-  const userInfo = getUserInfo()
-  
-  // 检查是否需要管理员权限
-  if (to.meta.requiresAdmin) {
-    if (!token) {
-      // 未登录，去管理员登录页
-      return next('/admin/login')
-    }
-    
-    // 检查用户类型是否为管理员 (type === 1)
-    if (userInfo && userInfo.type === 1) {
-      return next()
+  if (token) {
+    // 已登录
+    if (to.path === '/login') {
+      // 普通用户登录页：如果是管理员，跳转到审核页；否则跳转到首页
+      if (userInfo.type === 1) {
+        next('/admin/review')
+      } else {
+        next('/home')
+      }
+    } else if (to.path === '/admin/login') {
+      // 管理员登录页：如果已经是管理员，跳转到审核页；否则跳转到首页
+      if (userInfo.type === 1) {
+        next('/admin/review')
+      } else {
+        next('/home')
+      }
+    } else if (to.meta.requiresAdmin) {
+      // 需要管理员权限的页面
+      if (userInfo.type === 1) {
+        next()
+      } else {
+        // 普通用户访问管理员页面，跳转到首页
+        next('/home')
+      }
     } else {
-      // 不是管理员，去普通登录页
-      ElMessage.error('无权访问管理员页面')
-      return next('/login')
+      next()
+    }
+  } else {
+    // 未登录
+    if (isWhiteListed) {
+      // 在白名单中，直接放行
+      next()
+    } else {
+      // 不在白名单中，跳转到登录页
+      if (to.path.startsWith('/admin')) {
+        next('/admin/login')
+      } else {
+        next('/login')
+      }
     }
   }
-  
-  // 检查是否需要登录
-  if (to.meta.requiresAuth && !token) {
-    return next('/login')
-  }
-  
-  next()
 })
 
 export default router

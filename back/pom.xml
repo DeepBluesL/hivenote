@@ -6,18 +6,12 @@
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <version>3.1.5</version>
-    </parent>
+        <version>3.1.5</version> </parent>
 
     <groupId>com.hivenote</groupId>
     <artifactId>hivenote-backend</artifactId>
     <version>1.0.0</version>
     <packaging>jar</packaging>
-
-    <properties>
-        <java.version>17</java.version>
-        <poi.version>5.2.3</poi.version>
-    </properties>
 
     <dependencies>
         <dependency>
@@ -47,57 +41,7 @@
             <artifactId>hutool-all</artifactId>
             <version>5.8.20</version>
         </dependency>
-
-        <dependency>
-            <groupId>org.apache.httpcomponents</groupId>
-            <artifactId>httpclient</artifactId>
-            <version>4.5.14</version>
-        </dependency>
-        
-        <!-- PDF处理 -->
-        <dependency>
-            <groupId>org.apache.pdfbox</groupId>
-            <artifactId>pdfbox</artifactId>
-            <version>2.0.27</version>
-        </dependency>
-        
-        <!-- Apache POI 核心依赖 -->
-        <dependency>
-            <groupId>org.apache.poi</groupId>
-            <artifactId>poi</artifactId>
-            <version>${poi.version}</version>
-        </dependency>
-        
-        <!-- POI OOXML 支持 (处理 .docx, .xlsx, .pptx) -->
-        <dependency>
-            <groupId>org.apache.poi</groupId>
-            <artifactId>poi-ooxml</artifactId>
-            <version>${poi.version}</version>
-        </dependency>
-        
-        <!-- POI 旧格式支持 (处理 .doc, .xls, .ppt) -->
-        <dependency>
-            <groupId>org.apache.poi</groupId>
-            <artifactId>poi-scratchpad</artifactId>
-            <version>${poi.version}</version>
-        </dependency>
-        
-        <!-- 文本编码处理 -->
-        <dependency>
-            <groupId>commons-io</groupId>
-            <artifactId>commons-io</artifactId>
-            <version>2.11.0</version>
-        </dependency>
-        
-        <!-- XML 处理依赖 (POI OOXML 需要) -->
-        <dependency>
-            <groupId>org.apache.xmlbeans</groupId>
-            <artifactId>xmlbeans</artifactId>
-            <version>5.1.1</version>
-        </dependency>
-        
     </dependencies>
-    
     <build>
         <plugins>
             <plugin>

@@ -91,6 +91,84 @@ public class FileController {
     }
 
     /**
+     * 帖子图片上传
+     */
+    @PostMapping("/uploadPostImage")
+    public Result<Map<String, String>> uploadPostImage(@RequestParam("file") MultipartFile file) throws IOException {
+        if (file.isEmpty()) {
+            return Result.error("文件不能为空");
+        }
+
+        String originalFilename = file.getOriginalFilename();
+        String suffix = FileUtil.getSuffix(originalFilename).toLowerCase();
+
+        if (!suffix.matches("jpg|jpeg|png|gif|webp")) {
+            return Result.error("只支持上传 JPG、PNG、GIF、WEBP 格式的图片");
+        }
+
+        long maxSize = 10 * 1024 * 1024;
+        if (file.getSize() > maxSize) {
+            return Result.error("图片大小不能超过 10MB");
+        }
+
+        String postImgDir = uploadPath + "posts/";
+        if (!FileUtil.exist(postImgDir)) {
+            FileUtil.mkdir(postImgDir);
+        }
+
+        String fileName = "post_" + DateUtil.format(new Date(), "yyyyMMdd") + "_" + IdUtil.simpleUUID() + "." + suffix;
+        String fullPath = postImgDir + fileName;
+        file.transferTo(new File(fullPath));
+
+        String imageUrl = "http://localhost:8080/zwz/file/view/posts/" + fileName;
+
+        Map<String, String> map = new HashMap<>();
+        map.put("url", imageUrl);
+        map.put("fileName", fileName);
+
+        return Result.success(map);
+    }
+
+    /**
+     * 头像上传（仅图片）
+     */
+    @PostMapping("/uploadAvatar")
+    public Result<Map<String, String>> uploadAvatar(@RequestParam("file") MultipartFile file) throws IOException {
+        if (file.isEmpty()) {
+            return Result.error("文件不能为空");
+        }
+
+        String originalFilename = file.getOriginalFilename();
+        String suffix = FileUtil.getSuffix(originalFilename).toLowerCase();
+
+        if (!suffix.matches("jpg|jpeg|png|gif|webp")) {
+            return Result.error("只支持上传 JPG、PNG、GIF、WEBP 格式的图片");
+        }
+
+        long maxSize = 5 * 1024 * 1024;
+        if (file.getSize() > maxSize) {
+            return Result.error("头像图片大小不能超过 5MB");
+        }
+
+        String avatarDir = uploadPath + "avatars/";
+        if (!FileUtil.exist(avatarDir)) {
+            FileUtil.mkdir(avatarDir);
+        }
+
+        String fileName = "avatar_" + DateUtil.format(new Date(), "yyyyMMdd") + "_" + IdUtil.simpleUUID() + "." + suffix;
+        String fullPath = avatarDir + fileName;
+        file.transferTo(new File(fullPath));
+
+        String avatarUrl = "http://localhost:8080/zwz/file/view/avatars/" + fileName;
+
+        Map<String, String> map = new HashMap<>();
+        map.put("url", avatarUrl);
+        map.put("fileName", fileName);
+
+        return Result.success(map);
+    }
+
+    /**
      * 文件预览
      * URL: /zwz/file/view/{fileName}
      */
@@ -102,10 +180,34 @@ public class FileController {
             return;
         }
 
-        // 设置响应头，让浏览器在线预览
         response.setContentType("application/octet-stream");
-        
-        // 利用 Hutool 快速写出文件流
+
+        byte[] bytes = FileUtil.readBytes(file);
+        response.getOutputStream().write(bytes);
+    }
+
+    /**
+     * 支持子目录的文件预览 (如 avatars/xxx.jpg)
+     */
+    @GetMapping("/view/{subDir}/{fileName}")
+    public void viewSubDir(@PathVariable String subDir, @PathVariable String fileName,
+                           HttpServletResponse response) throws IOException {
+        File file = new File(uploadPath + subDir + "/" + fileName);
+        if (!file.exists()) {
+            response.setStatus(404);
+            return;
+        }
+
+        String suffix = FileUtil.getSuffix(fileName).toLowerCase();
+        String contentType = switch (suffix) {
+            case "jpg", "jpeg" -> "image/jpeg";
+            case "png" -> "image/png";
+            case "gif" -> "image/gif";
+            case "webp" -> "image/webp";
+            default -> "application/octet-stream";
+        };
+        response.setContentType(contentType);
+
         byte[] bytes = FileUtil.readBytes(file);
         response.getOutputStream().write(bytes);
     }

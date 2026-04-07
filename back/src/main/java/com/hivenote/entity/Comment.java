@@ -54,6 +54,11 @@ public class Comment implements Serializable {
     private String nickname;
 
     /**
+     * 评论人类型 (0:普通用户 1:管理员)
+     */
+    private Integer userType;
+
+    /**
      * 评论时间
      */
     private Date createTime;

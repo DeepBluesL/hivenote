@@ -32,6 +32,15 @@
             立即登录
           </el-button>
 
+          <div class="divider-line">
+            <span>或</span>
+          </div>
+
+          <el-button class="google-btn" @click="handleGoogleLogin">
+            <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google" class="google-icon" />
+            使用 Google 账号登录
+          </el-button>
+
           <div class="links">
             <el-link type="info" @click="router.push('/forgot-password')">忘记密码?</el-link>
             <div class="right-links">
@@ -58,12 +67,23 @@ const router = useRouter()
 const loginRef = ref(null)
 const loading = ref(false)
 
+const apiBase = import.meta.env.VITE_API_BASE || 'http://localhost:8080/zwz'
+
 // 如果已经登录，直接跳转到首页
 onMounted(() => {
   if (isLoggedIn()) {
     router.push('/home')
   }
+  // 处理 Google 登录失败的错误信息
+  const error = new URLSearchParams(window.location.search).get('error')
+  if (error) {
+    ElMessage.error(decodeURIComponent(error))
+  }
 })
+
+const handleGoogleLogin = () => {
+  window.location.href = apiBase + '/user/google/login'
+}
 
 const form = reactive({
   username: '',
@@ -243,5 +263,50 @@ const handleLogin = async () => {
 .divider {
   color: #dcdfe6;
   margin: 0 4px;
+}
+
+.divider-line {
+  display: flex;
+  align-items: center;
+  margin: 20px 0;
+  color: #999;
+  font-size: 13px;
+}
+
+.divider-line::before,
+.divider-line::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: #dcdfe6;
+}
+
+.divider-line span {
+  padding: 0 12px;
+}
+
+.google-btn {
+  width: 100%;
+  height: 44px;
+  font-size: 14px;
+  border: 1px solid #dcdfe6;
+  background: #fff;
+  color: #333;
+  border-radius: 4px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.google-btn:hover {
+  background: #f5f5f5;
+  border-color: #c0c4cc;
+}
+
+.google-icon {
+  width: 20px;
+  height: 20px;
 }
 </style>
