@@ -10,5 +10,13 @@ export default defineConfig({
       // 告诉 Vite: "@" 就代表 "src" 这个文件夹
       '@': path.resolve(__dirname, 'src')
     }
+  },
+  server: {
+    proxy: {
+      '/zwz': {
+        target: 'http://localhost:8080',
+        changeOrigin: true
+      }
+    }
   }
 })

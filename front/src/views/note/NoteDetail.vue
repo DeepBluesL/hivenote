@@ -258,9 +258,13 @@ const canPreview = computed(() => {
 
 const previewUrl = computed(() => {
   if (!note.value.fileUrl) return ''
-  const baseURL = import.meta.env.VITE_API_BASE || 'http://localhost:8080/zwz'
-  // 将 /view/ 路径拼接 baseURL，用于预览
-  return baseURL + note.value.fileUrl
+  // 提取相对路径，兼容旧记录中的完整 URL
+  let viewPath = note.value.fileUrl
+  if (viewPath.startsWith('http')) {
+    const url = new URL(viewPath)
+    viewPath = url.pathname
+  }
+  return viewPath
 })
 
 const cleanupPreview = () => {
@@ -363,13 +367,18 @@ const handleDownload = async () => {
   }
   try {
     await addDownloadCount(note.value.id)
-    // 相对路径拼接 baseURL，兼容本地和生产环境
-    const baseURL = import.meta.env.VITE_API_BASE || 'http://localhost:8080/zwz'
-    const downloadPath = note.value.fileUrl.replace('/view/', '/download/')
-    const downloadUrl = baseURL + downloadPath
+    // 提取相对路径，统一去掉 /view/ 为 /download/
+    let downloadPath = note.value.fileUrl.replace('/view/', '/download/')
+    // 兼容旧记录中的完整 URL（提取路径部分）
+    if (downloadPath.startsWith('http')) {
+      const url = new URL(downloadPath)
+      downloadPath = url.pathname
+    }
+    // 开发环境：Vite 代理转发 /zwz → localhost:8080
+    // 生产环境：nginx 代理 /zwz → 后端
     const link = document.createElement('a')
-    link.href = downloadUrl
-    link.download = note.value.fileUrl.split('/').pop()
+    link.href = downloadPath
+    link.download = downloadPath.split('/').pop()
     link.style.display = 'none'
     document.body.appendChild(link)
     link.click()
