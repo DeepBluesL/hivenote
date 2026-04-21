@@ -92,8 +92,8 @@ public class UserController {
             return Result.error("密码错误");
         }
 
-        // 检查账号状态
-        if (user.getStatus() != null && user.getStatus() == 0) {
+        // 检查账号状态 (-1:禁用)
+        if (user.getStatus() != null && user.getStatus() == -1) {
             return Result.error("账号已被禁用，请联系管理员");
         }
 

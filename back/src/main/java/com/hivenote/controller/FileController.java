@@ -177,10 +177,19 @@ public class FileController {
         File file = new File(uploadPath + fileName);
         if (!file.exists()) {
             System.out.println("文件不存在: " + uploadPath + fileName);
+            response.setStatus(404);
             return;
         }
 
-        response.setContentType("application/octet-stream");
+        String suffix = FileUtil.getSuffix(fileName).toLowerCase();
+        String contentType = switch (suffix) {
+            case "pdf" -> "application/pdf";
+            case "mp4" -> "video/mp4";
+            case "docx" -> "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+            case "zip" -> "application/zip";
+            default -> "application/octet-stream";
+        };
+        response.setContentType(contentType);
 
         byte[] bytes = FileUtil.readBytes(file);
         response.getOutputStream().write(bytes);

@@ -16,7 +16,7 @@ spring:
 
 # 注意：file 必须顶头写，不要有缩进
 file:
-  upload-path: D:/hivenote/files/
+  upload-path: ${user.home}/hivenote/files/
   access-path: /file/view/
 
 google:

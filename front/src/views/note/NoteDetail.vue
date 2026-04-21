@@ -42,6 +42,15 @@
             立即下载笔记
           </el-button>
           <el-button
+            v-if="canPreview"
+            size="large"
+            type="success"
+            @click="showPreview = true"
+          >
+            <el-icon><View /></el-icon>
+            预览文件
+          </el-button>
+          <el-button
             size="large"
             :type="isLiked ? 'danger' : 'default'"
             @click="handleToggleLike"
@@ -166,6 +175,45 @@
         </div>
       </div>
     </div>
+
+    <!-- 文件预览弹窗 -->
+    <el-dialog
+      v-model="showPreview"
+      :title="`文件预览 - ${note.title}`"
+      width="80%"
+      top="5vh"
+      :close-on-click-modal="false"
+      @close="cleanupPreview"
+    >
+      <div class="preview-container" v-loading="previewLoading">
+        <!-- PDF 预览 -->
+        <iframe
+          v-if="fileType === 'pdf'"
+          :src="previewUrl"
+          class="preview-frame"
+          @load="previewLoading = false"
+        ></iframe>
+
+        <!-- 视频预览 -->
+        <video
+          v-else-if="fileType === 'mp4'"
+          :src="previewUrl"
+          controls
+          autoplay
+          class="preview-video"
+          @loadeddata="previewLoading = false"
+        ></video>
+
+        <!-- 不支持预览的格式 -->
+        <div v-else class="preview-unsupported">
+          <el-icon :size="64" color="#909399"><Document /></el-icon>
+          <p>该文件格式暂不支持在线预览</p>
+          <el-button type="primary" @click="handleDownload">
+            <el-icon><Download /></el-icon> 下载后查看
+          </el-button>
+        </div>
+      </div>
+    </el-dialog>
   </div>
 </template>
 
@@ -190,6 +238,33 @@ const isLiked = ref(false)
 const isFavorited = ref(false)
 const replyTarget = ref(null)
 const replyContent = ref('')
+const showPreview = ref(false)
+const previewLoading = ref(true)
+
+const fileType = computed(() => {
+  if (!note.value.fileUrl) return ''
+  const url = note.value.fileUrl.toLowerCase()
+  if (url.includes('.pdf')) return 'pdf'
+  if (url.includes('.mp4')) return 'mp4'
+  if (url.includes('.docx')) return 'docx'
+  if (url.includes('.zip')) return 'zip'
+  return ''
+})
+
+const canPreview = computed(() => {
+  return note.value.fileUrl && (fileType.value === 'pdf' || fileType.value === 'mp4')
+})
+
+const previewUrl = computed(() => {
+  if (!note.value.fileUrl) return ''
+  // 将 /download/ 替换为 /view/ 用于预览
+  return note.value.fileUrl.replace('/download/', '/view/')
+})
+
+const cleanupPreview = () => {
+  showPreview.value = false
+  previewLoading.value = true
+}
 
 const parseTags = (tagsStr) => {
   if (!tagsStr) return []
@@ -514,4 +589,36 @@ onMounted(() => loadDetail())
 .reply-user { font-size: 13px; font-weight: 500; margin-bottom: 4px; display: flex; align-items: center; gap: 4px; }
 .reply-to { color: #409EFF; font-weight: normal; margin: 0 4px; }
 .reply-text { font-size: 13px; color: #606266; line-height: 1.5; margin-bottom: 4px; }
+
+/* 文件预览样式 */
+.preview-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 60vh;
+  background: #f5f7fa;
+  border-radius: 8px;
+}
+.preview-frame {
+  width: 100%;
+  height: 75vh;
+  border: none;
+  border-radius: 8px;
+  background: #fff;
+}
+.preview-video {
+  width: 100%;
+  max-height: 75vh;
+  border-radius: 8px;
+  background: #000;
+}
+.preview-unsupported {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  padding: 60px 20px;
+  color: #909399;
+  font-size: 16px;
+}
 </style>
