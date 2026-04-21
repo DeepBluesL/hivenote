@@ -228,6 +228,7 @@ import { getCommentList, addComment, deleteComment } from '@/api/comment'
 import { toggleFavorite, checkFavorite } from '@/api/favorite'
 import { toggleLike, checkLike } from '@/api/like'
 import { getUserInfo as getStoredUserInfo } from '@/utils/auth'
+import request from '@/utils/request'
 
 const route = useRoute()
 const loading = ref(true)
@@ -257,8 +258,9 @@ const canPreview = computed(() => {
 
 const previewUrl = computed(() => {
   if (!note.value.fileUrl) return ''
-  // 将 /download/ 替换为 /view/ 用于预览
-  return note.value.fileUrl.replace('/download/', '/view/')
+  const baseURL = import.meta.env.VITE_API_BASE || 'http://localhost:8080/zwz'
+  // 将 /view/ 路径拼接 baseURL，用于预览
+  return baseURL + note.value.fileUrl
 })
 
 const cleanupPreview = () => {
@@ -361,7 +363,10 @@ const handleDownload = async () => {
   }
   try {
     await addDownloadCount(note.value.id)
-    const downloadUrl = note.value.fileUrl.replace('/view/', '/download/')
+    // 相对路径拼接 baseURL，兼容本地和生产环境
+    const baseURL = import.meta.env.VITE_API_BASE || 'http://localhost:8080/zwz'
+    const downloadPath = note.value.fileUrl.replace('/view/', '/download/')
+    const downloadUrl = baseURL + downloadPath
     const link = document.createElement('a')
     link.href = downloadUrl
     link.download = note.value.fileUrl.split('/').pop()

@@ -73,9 +73,9 @@ public class FileController {
         file.transferTo(new File(fullPath));
         System.out.println("文件保存成功: " + fullPath);
 
-        // 6. 返回访问 URL 和下载 URL
-        String fileUrl = "http://localhost:8080/zwz/file/view/" + fileName;
-        String downloadUrl = "http://localhost:8080/zwz/file/download/" + fileName;
+        // 6. 返回相对路径，前端会自动拼接 baseURL（本地 localhost:8080 或生产域名）
+        String fileUrl = "/zwz/file/view/" + fileName;
+        String downloadUrl = "/zwz/file/download/" + fileName;
         
         System.out.println("文件访问URL: " + fileUrl);
         System.out.println("文件下载URL: " + downloadUrl);
@@ -120,7 +120,7 @@ public class FileController {
         String fullPath = postImgDir + fileName;
         file.transferTo(new File(fullPath));
 
-        String imageUrl = "http://localhost:8080/zwz/file/view/posts/" + fileName;
+        String imageUrl = "/zwz/file/view/posts/" + fileName;
 
         Map<String, String> map = new HashMap<>();
         map.put("url", imageUrl);
@@ -159,7 +159,7 @@ public class FileController {
         String fullPath = avatarDir + fileName;
         file.transferTo(new File(fullPath));
 
-        String avatarUrl = "http://localhost:8080/zwz/file/view/avatars/" + fileName;
+        String avatarUrl = "/zwz/file/view/avatars/" + fileName;
 
         Map<String, String> map = new HashMap<>();
         map.put("url", avatarUrl);
