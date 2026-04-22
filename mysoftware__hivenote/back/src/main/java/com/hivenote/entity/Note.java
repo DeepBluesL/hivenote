@@ -45,6 +45,11 @@ public class Note implements Serializable {
     private String fileUrl;
 
     /**
+     * 封面图片地址 (对应数据库 cover_url)
+     */
+    private String coverUrl;
+
+    /**
      * 创建人 (对应数据库 create_by，存储用户名)
      */
     private String createBy;

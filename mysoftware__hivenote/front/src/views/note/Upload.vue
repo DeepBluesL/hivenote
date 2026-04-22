@@ -48,6 +48,24 @@
             <el-input v-model="form.summary" type="textarea" :rows="4" placeholder="简单介绍一下这份笔记包含的内容..." />
           </el-form-item>
 
+          <el-form-item label="封面图片（可选）">
+            <el-upload
+              class="cover-upload"
+              action="#"
+              :auto-upload="false"
+              :limit="1"
+              :on-change="handleCoverChange"
+              :on-remove="handleCoverRemove"
+              accept=".png,.jpg,.jpeg,.gif,.webp"
+              list-type="picture-card"
+            >
+              <el-icon class="el-icon--upload"><Plus /></el-icon>
+              <template #tip>
+                <div class="el-upload__tip">支持 PNG、JPG、GIF、WEBP 格式，建议 16:9 比例，不超过 5MB</div>
+              </template>
+            </el-upload>
+          </el-form-item>
+
           <el-form-item label="上传文件 (PDF/MP4/DOCX/ZIP)">
             <el-upload
               class="upload-demo"
@@ -80,7 +98,7 @@
 
 <script setup>
 import { reactive, ref, onMounted } from 'vue'
-import { UploadFilled } from '@element-plus/icons-vue'
+import { UploadFilled, Plus } from '@element-plus/icons-vue'
 import NavBar from '../../components/NavBar.vue'
 import { ElMessage } from 'element-plus'
 import { useRouter } from 'vue-router'
@@ -99,6 +117,7 @@ const form = reactive({
   category: '',
   school: '',
   summary: '',
+  coverFile: null,
   file: null
 })
 
@@ -141,6 +160,23 @@ const uploadFile = async (file) => {
       'Content-Type': 'multipart/form-data'
     }
   })
+}
+
+const handleCoverChange = (file) => {
+  const allowedTypes = ['image/png', 'image/jpeg', 'image/gif', 'image/webp']
+  if (!allowedTypes.includes(file.raw.type)) {
+    ElMessage.error('封面只支持 PNG、JPG、GIF、WEBP 格式')
+    return false
+  }
+  if (file.raw.size / 1024 / 1024 > 5) {
+    ElMessage.error('封面图片大小不能超过 5MB')
+    return false
+  }
+  form.coverFile = file.raw
+}
+
+const handleCoverRemove = () => {
+  form.coverFile = null
 }
 
 const handleFileChange = (file) => {
@@ -198,14 +234,28 @@ const onSubmit = async () => {
     }
     
     console.log('文件上传成功:', fileRes.result.url)
-    
+
+    // 1.5 上传封面图片（如果有）
+    let coverUrl = ''
+    if (form.coverFile) {
+      console.log('开始上传封面图片:', form.coverFile.name)
+      const coverRes = await uploadFile(form.coverFile)
+      if (coverRes && coverRes.success) {
+        coverUrl = coverRes.result.url
+        console.log('封面上传成功:', coverUrl)
+      } else {
+        console.warn('封面上传失败，继续发布笔记（无封面）')
+      }
+    }
+
     // 2. 提交笔记信息
     const noteData = {
       title: form.title,
       category: form.category,
       school: form.school || '',
       summary: form.summary || '',
-      fileUrl: fileRes.result.url
+      fileUrl: fileRes.result.url,
+      coverUrl: coverUrl
     }
     
     console.log('提交笔记数据:', noteData)
@@ -238,4 +288,6 @@ onMounted(() => {
 .main-content { max-width: 800px; margin: 30px auto; padding: 0 20px; }
 .card-header { font-size: 18px; font-weight: bold; display: flex; align-items: center; gap: 8px; }
 .submit-btn { width: 100%; margin-top: 20px; }
+.cover-upload :deep(.el-upload--picture-card) { width: 200px; height: 120px; }
+.cover-upload :deep(.el-upload-list__item) { width: 200px; height: 120px; }
 </style>

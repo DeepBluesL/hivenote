@@ -40,10 +40,10 @@ public class FileController {
         String originalFilename = file.getOriginalFilename();
         String suffix = FileUtil.getSuffix(originalFilename).toLowerCase();
         
-        // 只允许 pdf, mp4, docx, zip
-        if (!suffix.matches("pdf|mp4|docx|zip")) {
+        // 只允许 pdf, mp4, docx, zip, 图片格式
+        if (!suffix.matches("pdf|mp4|docx|zip|png|jpg|jpeg|gif|webp")) {
             System.out.println("错误: 不支持的文件类型 - " + suffix);
-            return Result.error("只支持上传 PDF、MP4、DOCX、ZIP 格式的文件");
+            return Result.error("只支持上传 PDF、MP4、DOCX、ZIP、PNG、JPG、GIF、WEBP 格式的文件");
         }
         
         // 2. 验证文件大小（50MB）
@@ -102,8 +102,20 @@ public class FileController {
             return;
         }
 
-        // 设置响应头，让浏览器在线预览
-        response.setContentType("application/octet-stream");
+        // 根据文件扩展名设置正确的 Content-Type，使图片等资源可内联显示
+        String ext = FileUtil.getSuffix(fileName).toLowerCase();
+        String contentType;
+        switch (ext) {
+            case "png":  contentType = "image/png"; break;
+            case "jpg":
+            case "jpeg": contentType = "image/jpeg"; break;
+            case "gif":  contentType = "image/gif"; break;
+            case "webp": contentType = "image/webp"; break;
+            case "pdf":  contentType = "application/pdf"; break;
+            case "mp4":  contentType = "video/mp4"; break;
+            default:     contentType = "application/octet-stream"; break;
+        }
+        response.setContentType(contentType);
         
         // 利用 Hutool 快速写出文件流
         byte[] bytes = FileUtil.readBytes(file);

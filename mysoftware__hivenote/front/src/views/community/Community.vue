@@ -66,6 +66,11 @@
                 shadow="hover"
                 @click="goToDetail(note.id)"
               >
+                <!-- 封面图片 -->
+                <div v-if="note.coverUrl" class="latest-cover">
+                  <img :src="note.coverUrl" :alt="note.title" class="latest-cover-img" />
+                </div>
+
                 <div class="latest-card-header">
                   <el-tag :type="getCategoryType(note.category)" effect="dark" size="small">{{ note.category }}</el-tag>
                   <span class="latest-time">{{ formatDate(note.createTime) }}</span>
@@ -287,6 +292,8 @@ onMounted(() => loadData())
 .latest-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 16px; }
 .latest-card { border-radius: 10px; cursor: pointer; transition: transform 0.2s; border: none; }
 .latest-card:hover { transform: translateY(-3px); }
+.latest-cover { width: 100%; height: 120px; overflow: hidden; border-radius: 6px; margin-bottom: 10px; }
+.latest-cover-img { width: 100%; height: 100%; object-fit: cover; }
 .latest-card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
 .latest-time { font-size: 12px; color: #c0c4cc; }
 .latest-title { font-size: 15px; font-weight: 600; color: #303133; margin-bottom: 8px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

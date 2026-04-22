@@ -147,6 +147,17 @@
         <el-descriptions-item label="文件地址">
           <el-link :href="currentNote.fileUrl" target="_blank" type="primary">{{ currentNote.fileUrl }}</el-link>
         </el-descriptions-item>
+        <el-descriptions-item label="封面图片">
+          <template v-if="currentNote.coverUrl">
+            <el-image
+              :src="currentNote.coverUrl"
+              style="width: 200px; height: 120px; border-radius: 6px;"
+              fit="cover"
+              :preview-src-list="[currentNote.coverUrl]"
+            />
+          </template>
+          <span v-else style="color: #909399;">未设置封面</span>
+        </el-descriptions-item>
         <el-descriptions-item label="上传者">{{ currentNote.createBy }}</el-descriptions-item>
         <el-descriptions-item label="上传时间">{{ formatDate(currentNote.createTime) }}</el-descriptions-item>
         <el-descriptions-item label="浏览量">{{ currentNote.viewCount || 0 }}</el-descriptions-item>

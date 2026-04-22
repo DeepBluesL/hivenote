@@ -100,6 +100,7 @@ CREATE TABLE `t_note` (
   `category` varchar(32) DEFAULT NULL COMMENT '分类(CS/SE/Math/GE)',
   `summary` varchar(500) DEFAULT NULL COMMENT '简介',
   `file_url` varchar(500) DEFAULT NULL COMMENT '文件下载地址',
+  `cover_url` varchar(500) DEFAULT NULL COMMENT '封面图片地址',
   `view_count` int DEFAULT '0' COMMENT '浏览量',
   `download_count` int DEFAULT '0' COMMENT '下载量',
   `status` int DEFAULT '1' COMMENT '状态 0审核中 1正常',

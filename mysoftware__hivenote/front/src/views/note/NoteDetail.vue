@@ -4,6 +4,11 @@
 
     <div class="main-content" v-loading="loading">
       <div class="note-detail-card">
+        <!-- 封面横幅 -->
+        <div v-if="note.coverUrl" class="detail-cover">
+          <img :src="note.coverUrl" :alt="note.title" class="detail-cover-img" />
+        </div>
+
         <!-- 标题区 -->
         <div class="header-section">
           <el-tag size="large" effect="dark" class="category-tag">{{ note.category || '未分类' }}</el-tag>
@@ -394,7 +399,9 @@ onMounted(() => loadDetail())
 .page-container { min-height: 100vh; background: #f5f7fa; }
 .main-content { max-width: 900px; margin: 30px auto; padding: 0 20px; }
 
-.note-detail-card { background: #fff; padding: 40px; border-radius: 8px; box-shadow: 0 2px 12px 0 rgba(0,0,0,0.05); }
+.note-detail-card { background: #fff; padding: 40px; border-radius: 8px; box-shadow: 0 2px 12px 0 rgba(0,0,0,0.05); overflow: hidden; }
+.detail-cover { width: calc(100% + 80px); height: 300px; overflow: hidden; margin: -40px -40px 30px -40px; }
+.detail-cover-img { width: 100%; height: 100%; object-fit: cover; }
 .header-section { margin-bottom: 20px; text-align: center; }
 .note-title { margin: 15px 0 0; font-size: 24px; color: #303133; }
 

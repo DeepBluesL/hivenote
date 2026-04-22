@@ -6,6 +6,14 @@
     @click="handleClick"
   >
     <div class="card-content">
+      <!-- 封面图片 -->
+      <div class="card-cover">
+        <img v-if="note.coverUrl" :src="note.coverUrl" :alt="note.title" class="cover-img" />
+        <div v-else class="cover-placeholder">
+          <el-icon :size="32" color="#c0c4cc"><Document /></el-icon>
+        </div>
+      </div>
+
       <!-- 头部：分类与标题 -->
       <div class="card-header">
         <el-tag 
@@ -49,7 +57,7 @@
 <script setup>
 import { computed } from 'vue'
 import { useRouter } from 'vue-router'
-import { Download, View, Collection, ArrowDown } from '@element-plus/icons-vue' // 这里只引入用到的图标
+import { Download, View, Collection, ArrowDown, Document } from '@element-plus/icons-vue'
 
 const router = useRouter()
 
@@ -111,6 +119,32 @@ const handleClick = () => {
   flex-direction: column;
   height: 100%;
   box-sizing: border-box;
+}
+
+.card-cover {
+  width: 100%;
+  height: 140px;
+  overflow: hidden;
+  border-radius: 8px;
+  margin-bottom: 12px;
+  background: #f5f7fa;
+}
+.cover-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.3s ease;
+}
+.note-card:hover .cover-img {
+  transform: scale(1.05);
+}
+.cover-placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #f5f7fa 0%, #e4e7ed 100%);
 }
 
 .card-header {

@@ -87,8 +87,17 @@
             :key="note.id"
             class="note-card"
             shadow="hover"
+            :body-style="{ padding: '16px' }"
             @click="goToDetail(note.id)"
           >
+            <!-- 封面图片 -->
+            <div class="card-cover">
+              <img v-if="note.coverUrl" :src="note.coverUrl" :alt="note.title" class="cover-img" />
+              <div v-else class="cover-placeholder">
+                <el-icon :size="32" color="#c0c4cc"><Document /></el-icon>
+              </div>
+            </div>
+
             <div class="card-header">
               <el-tag :type="getCategoryType(note.category)" effect="dark" size="small">
                 {{ note.category }}
@@ -134,7 +143,7 @@
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { Search, Download, View } from '@element-plus/icons-vue'
+import { Search, Download, View, Document } from '@element-plus/icons-vue'
 import NavBar from '../../components/NavBar.vue'
 import { getNoteList } from '../../api/note'
 import { getSchoolList } from '../../api/school'
@@ -232,6 +241,12 @@ onMounted(() => {
 .grid-layout { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px; }
 .note-card { border-radius: 12px; border: none; cursor: pointer; transition: transform 0.3s; }
 .note-card:hover { transform: translateY(-5px); box-shadow: 0 10px 20px rgba(0,0,0,0.1); }
+
+.card-cover { width: 100%; height: 150px; overflow: hidden; border-radius: 8px; margin-bottom: 12px; background: #f5f7fa; }
+.cover-img { width: 100%; height: 100%; object-fit: cover; transition: transform 0.3s; }
+.note-card:hover .cover-img { transform: scale(1.05); }
+.cover-placeholder { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; background: linear-gradient(135deg, #e0e7ff 0%, #f5f7fa 100%); }
+
 .card-header { display: flex; align-items: center; margin-bottom: 12px; }
 .card-title { margin-left: 10px; font-weight: 600; font-size: 16px; color: #303133; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .summary { font-size: 13px; color: #909399; line-height: 1.5; height: 40px; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }

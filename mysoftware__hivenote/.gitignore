@@ -1,0 +1,13 @@
+# Compiled class files
+back/target/
+*.class
+
+# Node modules
+front/node_modules/
+
+# IDE
+.idea/
+*.iml
+
+# OS
+.DS_Store
