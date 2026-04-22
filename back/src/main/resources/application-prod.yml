@@ -1,0 +1,20 @@
+spring:
+  datasource:
+    url: jdbc:mysql://localhost:3306/hivenote?useUnicode=true&characterEncoding=utf-8&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Tokyo
+    username: hivenote
+    password: hivenote
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+file:
+  upload-path: /opt/hivenote/files/
+  access-path: /file/view/
+
+google:
+  client-id: 970752287924-vuaka9fp3cp59fj84l2ovlmhrmq0vp4n.apps.googleusercontent.com
+  client-secret: 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
+  redirect-uri: https://hivenote.online/api/zwz/user/google/callback
+  frontend-url: https://hivenote.online
+
+mybatis-plus:
+  configuration:
+    log-impl:
