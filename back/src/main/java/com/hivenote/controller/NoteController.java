@@ -1,12 +1,16 @@
 package com.hivenote.controller;
 
 import cn.hutool.core.util.StrUtil;
+import cn.hutool.json.JSONArray;
+import cn.hutool.json.JSONObject;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.hivenote.common.Result;
 import com.hivenote.entity.Note;
+import com.hivenote.entity.NoteReview;
 import com.hivenote.entity.User;
+import com.hivenote.service.INoteReviewService;
 import com.hivenote.service.INoteService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
@@ -18,10 +22,11 @@ public class NoteController {
     @Autowired
     private INoteService noteService;
 
+    @Autowired
+    private INoteReviewService noteReviewService;
+
     /**
      * 1. 获取笔记列表
-     * 前端参数: page, size, keyword, category, sortBy
-     * keyword 同时搜索 title 和 summary
      */
     @GetMapping("/list")
     public Result<IPage<Note>> getList(@RequestParam(defaultValue = "1") int page,
@@ -33,98 +38,54 @@ public class NoteController {
                                        String tag,
                                        @RequestParam(defaultValue = "newest") String sortBy) {
         Page<Note> pageParam = new Page<>(page, size);
-        
         QueryWrapper<Note> qw = new QueryWrapper<>();
-
-        // keyword 支持同时搜索标题、简介、上传者
         String searchTerm = StrUtil.isNotBlank(keyword) ? keyword : title;
         if (StrUtil.isNotBlank(searchTerm)) {
             qw.and(w -> w.like("title", searchTerm)
                     .or().like("summary", searchTerm)
                     .or().like("create_by", searchTerm));
         }
-        if (StrUtil.isNotBlank(category)) {
-            qw.eq("category", category);
-        }
-        if (StrUtil.isNotBlank(school)) {
-            qw.eq("school", school);
-        }
-        if (StrUtil.isNotBlank(tag)) {
-            qw.like("tags", tag);
-        }
-        qw.eq("status", 1);
-        qw.eq("del_flag", 0);
-
+        if (StrUtil.isNotBlank(category)) qw.eq("category", category);
+        if (StrUtil.isNotBlank(school)) qw.eq("school", school);
+        if (StrUtil.isNotBlank(tag)) qw.like("tags", tag);
+        qw.eq("status", 1).eq("del_flag", 0);
         switch (sortBy) {
-            case "popular":
-                qw.orderByDesc("view_count");
-                break;
-            case "downloads":
-                qw.orderByDesc("download_count");
-                break;
-            case "likes":
-                qw.orderByDesc("like_count");
-                break;
-            default:
-                qw.orderByDesc("create_time");
-                break;
+            case "popular": qw.orderByDesc("view_count"); break;
+            case "downloads": qw.orderByDesc("download_count"); break;
+            case "likes": qw.orderByDesc("like_count"); break;
+            default: qw.orderByDesc("create_time"); break;
         }
-
-        IPage<Note> result = noteService.page(pageParam, qw);
-        return Result.success(result);
+        return Result.success(noteService.page(pageParam, qw));
     }
 
-    /**
-     * 热门笔记 (社区页面用)
-     */
     @GetMapping("/hot")
     public Result<java.util.List<Note>> getHotNotes(@RequestParam(defaultValue = "10") int limit) {
         QueryWrapper<Note> qw = new QueryWrapper<>();
-        qw.eq("status", 1);
-        qw.eq("del_flag", 0);
-        qw.orderByDesc("view_count");
-        qw.last("LIMIT " + limit);
+        qw.eq("status", 1).eq("del_flag", 0).orderByDesc("view_count").last("LIMIT " + limit);
         return Result.success(noteService.list(qw));
     }
 
-    /**
-     * 最新笔记 (社区页面用)
-     */
     @GetMapping("/latest")
     public Result<java.util.List<Note>> getLatestNotes(@RequestParam(defaultValue = "10") int limit) {
         QueryWrapper<Note> qw = new QueryWrapper<>();
-        qw.eq("status", 1);
-        qw.eq("del_flag", 0);
-        qw.orderByDesc("create_time");
-        qw.last("LIMIT " + limit);
+        qw.eq("status", 1).eq("del_flag", 0).orderByDesc("create_time").last("LIMIT " + limit);
         return Result.success(noteService.list(qw));
     }
 
-    /**
-     * 推荐笔记 (管理员置顶优先，其余按综合热度排序)
-     */
     @GetMapping("/recommend")
     public Result<java.util.List<Note>> getRecommendNotes(@RequestParam(defaultValue = "6") int limit) {
         QueryWrapper<Note> qw = new QueryWrapper<>();
-        qw.eq("status", 1);
-        qw.eq("del_flag", 0);
-        qw.last("ORDER BY IFNULL(featured,0) DESC, " +
+        qw.eq("status", 1).eq("del_flag", 0)
+          .last("ORDER BY IFNULL(featured,0) DESC, " +
                 "IFNULL(like_count,0)*3 + IFNULL(view_count,0) + IFNULL(download_count,0)*2 DESC " +
                 "LIMIT " + limit);
         return Result.success(noteService.list(qw));
     }
 
-    /**
-     * 期末冲刺笔记 (管理员推荐优先，按标签或标题关键词匹配)
-     */
     @GetMapping("/examSprint")
-    public Result<java.util.List<Note>> getExamSprintNotes(
-            @RequestParam(defaultValue = "8") int limit,
-            String tag) {
+    public Result<java.util.List<Note>> getExamSprintNotes(@RequestParam(defaultValue = "8") int limit, String tag) {
         QueryWrapper<Note> qw = new QueryWrapper<>();
-        qw.eq("status", 1);
-        qw.eq("del_flag", 0);
-
+        qw.eq("status", 1).eq("del_flag", 0);
         if (StrUtil.isNotBlank(tag)) {
             qw.and(w -> w.like("tags", tag).or().eq("exam_featured", 1));
         } else {
@@ -137,96 +98,42 @@ public class NoteController {
                     .or().like("title", "考试")
                     .or().eq("exam_featured", 1));
         }
-
         qw.last("ORDER BY IFNULL(exam_featured,0) DESC, " +
                 "IFNULL(like_count,0)*2 + IFNULL(view_count,0) + IFNULL(download_count,0) DESC " +
                 "LIMIT " + limit);
         return Result.success(noteService.list(qw));
     }
 
-    /**
-     * 社区统计数据
-     */
     @GetMapping("/stats")
     public Result<java.util.Map<String, Object>> getStats() {
         QueryWrapper<Note> qw = new QueryWrapper<>();
-        qw.eq("status", 1);
-        qw.eq("del_flag", 0);
-
-        long totalNotes = noteService.count(qw);
-
+        qw.eq("status", 1).eq("del_flag", 0);
         java.util.Map<String, Object> stats = new java.util.HashMap<>();
-        stats.put("totalNotes", totalNotes);
+        stats.put("totalNotes", noteService.count(qw));
         return Result.success(stats);
     }
 
-    /**
-     * 2. 获取详情
-     */
     @GetMapping("/detail/{id}")
     public Result<Note> getDetail(@PathVariable String id) {
-        System.out.println("=== 获取笔记详情 ===");
-        System.out.println("笔记ID: " + id);
-        
         Note note = noteService.getById(id);
-        if (note == null) {
-            System.out.println("错误: 笔记不存在");
-            return Result.error("笔记不存在");
-        }
-        
-        System.out.println("标题: " + note.getTitle());
-        System.out.println("分类: " + note.getCategory());
-        System.out.println("创建人: " + note.getCreateBy());
-        System.out.println("当前浏览量: " + note.getViewCount());
-        
-        // 增加浏览量
+        if (note == null) return Result.error("笔记不存在");
         Integer viewCount = note.getViewCount() != null ? note.getViewCount() : 0;
         note.setViewCount(viewCount + 1);
         noteService.updateById(note);
-        
-        System.out.println("更新后浏览量: " + note.getViewCount());
-        System.out.println("==================");
-        
         return Result.success(note);
     }
 
-    /**
-     * 3. 发布笔记
-     * 前端: { title: '...', category: '...', summary: '...', fileUrl: '...' }
-     */
     @PostMapping("/add")
     public Result<Object> add(@RequestBody Note note, @RequestHeader("accessToken") String token) {
-        System.out.println("=== 发布笔记调试信息 ===");
-        System.out.println("标题: " + note.getTitle());
-        System.out.println("分类: " + note.getCategory());
-        System.out.println("简介: " + note.getSummary());
-        System.out.println("文件URL: " + note.getFileUrl());
-        
-        // 从 Token 获取当前登录用户
         User currentUser = UserController.sessionMap.get(token);
-        if (currentUser == null) {
-            return Result.error(401, "请先登录");
-        }
+        if (currentUser == null) return Result.error(401, "请先登录");
+        if (StrUtil.isBlank(note.getTitle())) return Result.error("标题不能为空");
+        if (StrUtil.isBlank(note.getCategory())) return Result.error("分类不能为空");
+        if (StrUtil.isBlank(note.getFileUrl())) return Result.error("文件不能为空");
 
-        // 参数校验
-        if (note.getTitle() == null || note.getTitle().trim().isEmpty()) {
-            return Result.error("标题不能为空");
-        }
-        if (note.getCategory() == null || note.getCategory().trim().isEmpty()) {
-            return Result.error("分类不能为空");
-        }
-        if (note.getFileUrl() == null || note.getFileUrl().trim().isEmpty()) {
-            return Result.error("文件不能为空");
-        }
-
-        // 生成ID
         note.setId(cn.hutool.core.util.IdUtil.getSnowflakeNextIdStr());
-        
-        // 补全信息
         note.setCreateBy(currentUser.getUsername());
-        if (note.getSchool() == null || note.getSchool().trim().isEmpty()) {
-            note.setSchool(currentUser.getSchool());
-        }
+        if (StrUtil.isBlank(note.getSchool())) note.setSchool(currentUser.getSchool());
         note.setViewCount(0);
         note.setDownloadCount(0);
         note.setLikeCount(0);
@@ -236,314 +143,215 @@ public class NoteController {
         note.setStatus(0);
         note.setDelFlag(0);
         note.setCreateTime(new java.util.Date());
-        if (note.getTags() == null) {
-            note.setTags("");
-        }
+        if (note.getTags() == null) note.setTags("");
 
-        System.out.println("生成的笔记ID: " + note.getId());
-        System.out.println("创建人: " + note.getCreateBy());
-        
         boolean saved = noteService.save(note);
-        
-        System.out.println("保存结果: " + (saved ? "成功" : "失败"));
-        System.out.println("==================");
-        
-        if (saved) {
-            return Result.success("发布成功");
-        } else {
-            return Result.error("发布失败，请稍后重试");
-        }
+        return saved ? Result.success("发布成功") : Result.error("发布失败");
     }
 
-    /**
-     * 4. 获取我的上传列表
-     */
     @GetMapping("/myList")
     public Result<java.util.List<Note>> getMyList(@RequestHeader("accessToken") String token) {
-        System.out.println("=== 获取我的上传列表 ===");
-        
-        // 从 Token 获取当前登录用户
         User currentUser = UserController.sessionMap.get(token);
-        if (currentUser == null) {
-            return Result.error(401, "请先登录");
-        }
-        
-        System.out.println("用户: " + currentUser.getUsername());
-        
-        // 查询该用户上传的所有笔记
+        if (currentUser == null) return Result.error(401, "请先登录");
         QueryWrapper<Note> qw = new QueryWrapper<>();
-        qw.eq("create_by", currentUser.getUsername());
-        qw.eq("del_flag", 0); // 未删除的
-        qw.orderByDesc("create_time"); // 按时间倒序
-        
-        java.util.List<Note> list = noteService.list(qw);
-        
-        System.out.println("查询到 " + list.size() + " 条笔记");
-        System.out.println("==================");
-        
-        return Result.success(list);
+        qw.eq("create_by", currentUser.getUsername()).eq("del_flag", 0).orderByDesc("create_time");
+        return Result.success(noteService.list(qw));
     }
-    
-    /**
-     * 5. 删除笔记（软删除）
-     */
+
     @PostMapping("/delete/{id}")
     public Result<Object> delete(@PathVariable String id, @RequestHeader("accessToken") String token) {
-        System.out.println("=== 删除笔记 ===");
-        System.out.println("笔记ID: " + id);
-        
-        // 从 Token 获取当前登录用户
         User currentUser = UserController.sessionMap.get(token);
-        if (currentUser == null) {
-            return Result.error(401, "请先登录");
-        }
-        
+        if (currentUser == null) return Result.error(401, "请先登录");
         Note note = noteService.getById(id);
-        if (note == null) {
-            return Result.error("笔记不存在");
-        }
-        
-        // 验证是否是本人的笔记
-        if (!currentUser.getUsername().equals(note.getCreateBy())) {
-            System.out.println("错误: 无权删除他人笔记");
-            return Result.error("无权删除他人笔记");
-        }
-        
-        // 软删除：设置 del_flag = 1
+        if (note == null) return Result.error("笔记不存在");
+        if (!currentUser.getUsername().equals(note.getCreateBy())) return Result.error("无权删除他人笔记");
         note.setDelFlag(1);
         note.setUpdateBy(currentUser.getUsername());
         note.setUpdateTime(new java.util.Date());
-        
-        boolean updated = noteService.updateById(note);
-        
-        System.out.println("删除结果: " + (updated ? "成功" : "失败"));
-        System.out.println("==================");
-        
-        if (updated) {
-            return Result.success("删除成功");
-        } else {
-            return Result.error("删除失败");
-        }
+        return noteService.updateById(note) ? Result.success("删除成功") : Result.error("删除失败");
     }
-    
-    /**
-     * 6. 增加下载次数
-     */
+
     @PostMapping("/download/{id}")
     public Result<Object> addDownload(@PathVariable String id) {
-        System.out.println("=== 增加下载次数 ===");
-        System.out.println("笔记ID: " + id);
-        
         Note note = noteService.getById(id);
-        if (note != null) {
-            Integer downloadCount = note.getDownloadCount() != null ? note.getDownloadCount() : 0;
-            System.out.println("当前下载量: " + downloadCount);
-            
-            note.setDownloadCount(downloadCount + 1);
-            noteService.updateById(note);
-            
-            System.out.println("更新后下载量: " + note.getDownloadCount());
-            System.out.println("==================");
-            
-            return Result.success("下载次数已更新");
-        }
-        
-        System.out.println("错误: 笔记不存在");
-        System.out.println("==================");
-        return Result.error("笔记不存在");
+        if (note == null) return Result.error("笔记不存在");
+        Integer downloadCount = note.getDownloadCount() != null ? note.getDownloadCount() : 0;
+        note.setDownloadCount(downloadCount + 1);
+        noteService.updateById(note);
+        return Result.success("下载次数已更新");
     }
-    
-    /**
-     * 7. 管理员获取笔记列表（包含所有状态）
-     */
+
     @GetMapping("/admin/list")
     public Result<IPage<Note>> getAdminList(@RequestParam(defaultValue = "1") int page,
                                             @RequestParam(defaultValue = "10") int size,
-                                            Integer status,
-                                            String category,
-                                            String title,
+                                            Integer status, String category, String title,
                                             @RequestHeader("accessToken") String token) {
-        System.out.println("=== 管理员查询笔记列表 ===");
-        
-        // 验证管理员权限
         User currentUser = UserController.sessionMap.get(token);
-        if (currentUser == null) {
-            return Result.error(401, "请先登录");
-        }
-        if (currentUser.getType() == null || currentUser.getType() != 1) {
-            return Result.error(403, "无权访问");
-        }
-        
-        System.out.println("页码: " + page);
-        System.out.println("每页数量: " + size);
-        System.out.println("状态筛选: " + status);
-        System.out.println("分类筛选: " + category);
-        System.out.println("标题关键词: " + title);
-        
-        // 构造分页对象
-        Page<Note> pageParam = new Page<>(page, size);
-        
-        // 构造查询条件
-        QueryWrapper<Note> qw = new QueryWrapper<>();
-        if (status != null) {
-            qw.eq("status", status);
-        }
-        if (StrUtil.isNotBlank(category)) {
-            qw.eq("category", category);
-        }
-        if (StrUtil.isNotBlank(title)) {
-            qw.like("title", title);
-        }
-        qw.eq("del_flag", 0); // 未删除的
-        qw.orderByDesc("create_time"); // 按时间倒序
+        if (currentUser == null) return Result.error(401, "请先登录");
+        if (currentUser.getType() == null || currentUser.getType() != 1) return Result.error(403, "无权访问");
 
-        // 执行查询
-        IPage<Note> result = noteService.page(pageParam, qw);
-        
-        System.out.println("查询结果数量: " + result.getRecords().size());
-        System.out.println("总记录数: " + result.getTotal());
-        System.out.println("==================");
-        
-        return Result.success(result);
+        Page<Note> pageParam = new Page<>(page, size);
+        QueryWrapper<Note> qw = new QueryWrapper<>();
+        if (status != null) qw.eq("status", status);
+        if (StrUtil.isNotBlank(category)) qw.eq("category", category);
+        if (StrUtil.isNotBlank(title)) qw.like("title", title);
+        qw.eq("del_flag", 0).orderByDesc("create_time");
+        return Result.success(noteService.page(pageParam, qw));
     }
-    
-    /**
-     * 8. 审核通过笔记
-     */
+
     @PostMapping("/admin/approve/{id}")
-    public Result<Object> approveNote(@PathVariable String id,
-                                      @RequestHeader("accessToken") String token) {
-        System.out.println("=== 审核通过笔记 ===");
-        System.out.println("笔记ID: " + id);
-        
-        // 验证管理员权限
+    public Result<Object> approveNote(@PathVariable String id, @RequestHeader("accessToken") String token) {
         User currentUser = UserController.sessionMap.get(token);
-        if (currentUser == null) {
-            return Result.error(401, "请先登录");
-        }
-        if (currentUser.getType() == null || currentUser.getType() != 1) {
-            return Result.error(403, "无权操作");
-        }
-        
+        if (currentUser == null) return Result.error(401, "请先登录");
+        if (currentUser.getType() == null || currentUser.getType() != 1) return Result.error(403, "无权操作");
         Note note = noteService.getById(id);
-        if (note == null) {
-            System.out.println("错误: 笔记不存在");
-            return Result.error("笔记不存在");
-        }
-        
-        // 更新状态为通过(1)
+        if (note == null) return Result.error("笔记不存在");
         note.setStatus(1);
         note.setUpdateBy(currentUser.getUsername());
         note.setUpdateTime(new java.util.Date());
-        
-        boolean updated = noteService.updateById(note);
-        
-        System.out.println("审核结果: " + (updated ? "成功" : "失败"));
-        System.out.println("==================");
-        
-        if (updated) {
-            return Result.success("审核通过");
-        } else {
-            return Result.error("操作失败");
-        }
+        return noteService.updateById(note) ? Result.success("审核通过") : Result.error("操作失败");
     }
-    
+
     /**
-     * 9. 拒绝笔记
+     * 9. 拒绝笔记（含拒绝原因，并保存拒绝报告）
      */
     @PostMapping("/admin/reject/{id}")
     public Result<Object> rejectNote(@PathVariable String id,
+                                     @RequestParam String reason,
                                      @RequestHeader("accessToken") String token) {
-        System.out.println("=== 拒绝笔记 ===");
-        System.out.println("笔记ID: " + id);
-        
-        // 验证管理员权限
         User currentUser = UserController.sessionMap.get(token);
-        if (currentUser == null) {
-            return Result.error(401, "请先登录");
-        }
-        if (currentUser.getType() == null || currentUser.getType() != 1) {
-            return Result.error(403, "无权操作");
-        }
-        
+        if (currentUser == null) return Result.error(401, "请先登录");
+        if (currentUser.getType() == null || currentUser.getType() != 1) return Result.error(403, "无权操作");
         Note note = noteService.getById(id);
-        if (note == null) {
-            System.out.println("错误: 笔记不存在");
-            return Result.error("笔记不存在");
-        }
-        
-        // 更新状态为拒绝(2)
+        if (note == null) return Result.error("笔记不存在");
+
         note.setStatus(2);
         note.setUpdateBy(currentUser.getUsername());
         note.setUpdateTime(new java.util.Date());
-        
-        boolean updated = noteService.updateById(note);
-        
-        System.out.println("拒绝结果: " + (updated ? "成功" : "失败"));
-        System.out.println("==================");
-        
-        if (updated) {
-            return Result.success("已拒绝");
-        } else {
-            return Result.error("操作失败");
-        }
+        noteService.updateById(note);
+
+        NoteReview review = new NoteReview();
+        review.setNoteId(id);
+        review.setReviewer(currentUser.getUsername());
+        review.setReviewType("MANUAL_REJECT");
+        review.setRejectReason(reason);
+        review.setStatus(0);
+        noteReviewService.save(review);
+
+        return Result.success("已拒绝笔记，并已生成拒绝报告");
     }
 
-    /**
-     * 10. 管理员设置/取消推荐笔记
-     */
     @PostMapping("/admin/setFeatured/{id}")
-    public Result<Object> setFeatured(@PathVariable String id,
-                                      @RequestParam int featured,
+    public Result<Object> setFeatured(@PathVariable String id, @RequestParam int featured,
                                       @RequestHeader("accessToken") String token) {
         User currentUser = UserController.sessionMap.get(token);
-        if (currentUser == null) {
-            return Result.error(401, "请先登录");
-        }
-        if (currentUser.getType() == null || currentUser.getType() != 1) {
-            return Result.error(403, "无权操作");
-        }
-
+        if (currentUser == null) return Result.error(401, "请先登录");
+        if (currentUser.getType() == null || currentUser.getType() != 1) return Result.error(403, "无权操作");
         Note note = noteService.getById(id);
-        if (note == null) {
-            return Result.error("笔记不存在");
-        }
-
+        if (note == null) return Result.error("笔记不存在");
         note.setFeatured(featured);
         note.setUpdateBy(currentUser.getUsername());
         note.setUpdateTime(new java.util.Date());
-        boolean updated = noteService.updateById(note);
-
-        return updated ? Result.success(featured == 1 ? "已设为推荐" : "已取消推荐")
-                       : Result.error("操作失败");
+        return noteService.updateById(note) ? 
+               Result.success(featured == 1 ? "已设为推荐" : "已取消推荐") : Result.error("操作失败");
     }
 
-    /**
-     * 11. 管理员设置/取消期末冲刺推荐
-     */
     @PostMapping("/admin/setExamFeatured/{id}")
-    public Result<Object> setExamFeatured(@PathVariable String id,
-                                          @RequestParam int examFeatured,
+    public Result<Object> setExamFeatured(@PathVariable String id, @RequestParam int examFeatured,
                                           @RequestHeader("accessToken") String token) {
         User currentUser = UserController.sessionMap.get(token);
-        if (currentUser == null) {
-            return Result.error(401, "请先登录");
-        }
-        if (currentUser.getType() == null || currentUser.getType() != 1) {
-            return Result.error(403, "无权操作");
-        }
-
+        if (currentUser == null) return Result.error(401, "请先登录");
+        if (currentUser.getType() == null || currentUser.getType() != 1) return Result.error(403, "无权操作");
         Note note = noteService.getById(id);
-        if (note == null) {
-            return Result.error("笔记不存在");
-        }
-
+        if (note == null) return Result.error("笔记不存在");
         note.setExamFeatured(examFeatured);
         note.setUpdateBy(currentUser.getUsername());
         note.setUpdateTime(new java.util.Date());
-        boolean updated = noteService.updateById(note);
+        return noteService.updateById(note) ?
+               Result.success(examFeatured == 1 ? "已设为期末冲刺推荐" : "已取消期末冲刺推荐") : Result.error("操作失败");
+    }
 
-        return updated ? Result.success(examFeatured == 1 ? "已设为期末冲刺推荐" : "已取消期末冲刺推荐")
-                       : Result.error("操作失败");
+    // ==================== 新增功能 ====================
+
+    /**
+     * 12. AI辅助审核建议（使用DeepSeek）
+     */
+    @PostMapping("/admin/aiReview/{noteId}")
+    public Result<String> aiReview(@PathVariable String noteId,
+                                   @RequestHeader("accessToken") String token) {
+        User currentUser = UserController.sessionMap.get(token);
+        if (currentUser == null || currentUser.getType() == null || currentUser.getType() != 1)
+            return Result.error(403, "无权操作");
+        Note note = noteService.getById(noteId);
+        if (note == null) return Result.error("笔记不存在");
+
+        // 构造提示词
+        String prompt = "请作为审核助手，分析以下笔记内容是否合规，并给出质量评估和改进建议。\n" +
+            "标题：" + note.getTitle() + "\n" +
+            "分类：" + note.getCategory() + "\n" +
+            "简介：" + note.getSummary() + "\n" +
+            "标签：" + note.getTags() + "\n" +
+            "上传者：" + note.getCreateBy() + "\n" +
+            "学校：" + note.getSchool() + "\n\n" +
+            "请判断是否存在违规内容、抄袭嫌疑或低质量内容，并给出简短审核意见。";
+
+        // 使用Hutool构建JSON请求体
+        JSONObject body = new JSONObject();
+        body.set("model", "deepseek-chat");
+        JSONArray messages = new JSONArray();
+        JSONObject msg = new JSONObject();
+        msg.set("role", "user");
+        msg.set("content", prompt);
+        messages.add(msg);
+        body.set("messages", messages);
+
+        String suggestion;
+        try {
+            String response = cn.hutool.http.HttpUtil.createPost("https://api.deepseek.com/v1/chat/completions")
+                    .header("Authorization", "Bearer sk-799097e6d82e4dfea93104cc314a5bd1")
+                    .header("Content-Type", "application/json")
+                    .body(body.toString())
+                    .timeout(30000)
+                    .execute()
+                    .body();
+
+            JSONObject respJson = new JSONObject(response);
+            suggestion = respJson.getJSONArray("choices")
+                    .getJSONObject(0)
+                    .getJSONObject("message")
+                    .getStr("content");
+        } catch (Exception e) {
+            return Result.error("AI服务调用失败: " + e.getMessage());
+        }
+
+        // 保存审核记录
+        NoteReview review = new NoteReview();
+        review.setNoteId(noteId);
+        review.setReviewer(currentUser.getUsername());
+        review.setReviewType("AI_SUGGESTION");
+        review.setAiSuggestion(suggestion);
+        review.setStatus(0);
+        noteReviewService.save(review);
+
+        return Result.success(suggestion);
+    }
+
+    /**
+     * 13. 获取某条笔记的审核记录
+     */
+    @GetMapping("/reviewLog/{noteId}")
+    public Result<java.util.List<NoteReview>> getReviewLog(@PathVariable String noteId,
+                                                           @RequestHeader("accessToken") String token) {
+        User currentUser = UserController.sessionMap.get(token);
+        if (currentUser == null) return Result.error(401, "请先登录");
+        Note note = noteService.getById(noteId);
+        if (note == null) return Result.error("笔记不存在");
+        if (currentUser.getType() == null || currentUser.getType() != 1) {
+            if (!currentUser.getUsername().equals(note.getCreateBy()))
+                return Result.error(403, "无权查看");
+        }
+        QueryWrapper<NoteReview> qw = new QueryWrapper<>();
+        qw.eq("note_id", noteId).orderByDesc("create_time");
+        return Result.success(noteReviewService.list(qw));
     }
 }

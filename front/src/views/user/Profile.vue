@@ -63,12 +63,7 @@
               clearable
               :loading="schoolLoading"
             >
-              <el-option
-                v-for="s in schoolOptions"
-                :key="s"
-                :label="s"
-                :value="s"
-              />
+              <el-option v-for="s in schoolOptions" :key="s" :label="s" :value="s" />
             </el-select>
           </el-form-item>
           <el-form-item label="头像">
@@ -120,7 +115,7 @@
         </template>
       </el-dialog>
 
-      <!-- Tabs: 我的上传 / 我的收藏 -->
+      <!-- Tabs: 我的上传 / 我的收藏 / 我的帖子 -->
       <el-tabs v-model="activeTab" class="profile-tabs">
         <el-tab-pane label="我的上传" name="uploads">
           <div class="tab-content">
@@ -140,10 +135,16 @@
                   <el-tag type="info" v-else>未知</el-tag>
                 </template>
               </el-table-column>
-              <el-table-column label="操作" width="140">
+              <el-table-column label="操作" width="200">
                 <template #default="scope">
                   <el-button type="primary" link @click="router.push(`/note/detail/${scope.row.id}`)">查看</el-button>
                   <el-button type="danger" link @click="handleDelete(scope.row)">删除</el-button>
+                  <el-button
+                    v-if="scope.row.status === 2"
+                    type="warning"
+                    link
+                    @click="showRejectReason(scope.row.id)"
+                  >查看原因</el-button>
                 </template>
               </el-table-column>
             </el-table>
@@ -208,6 +209,11 @@
           </div>
         </el-tab-pane>
       </el-tabs>
+
+      <!-- 拒绝原因弹窗 -->
+      <el-dialog v-model="rejectDialogVisible" title="拒绝原因" width="500px">
+        <div style="white-space: pre-wrap; padding: 10px;">{{ rejectReasonText }}</div>
+      </el-dialog>
     </div>
   </div>
 </template>
@@ -223,6 +229,7 @@ import { getUserInfo as getStoredUserInfo, setUserInfo as setStoredUserInfo } fr
 import { getMyFavorites } from '@/api/favorite'
 import { getMyPosts, deletePost } from '@/api/post'
 import { getSchoolList } from '@/api/school'
+import { getNoteReviewLog } from '@/api/note'
 import request from '@/utils/request'
 
 const router = useRouter()
@@ -253,6 +260,10 @@ const editForm = ref({
   showEmail: 1,
   showStudentId: 1
 })
+
+// 拒绝原因相关
+const rejectDialogVisible = ref(false)
+const rejectReasonText = ref('')
 
 const handleSchoolSearch = async (query) => {
   if (!query) {
@@ -527,6 +538,22 @@ const handleAvatarChange = (e) => {
 
 const handleDialogAvatarChange = (uploadFile) => {
   doAvatarUpload(uploadFile.raw)
+}
+
+// 查看拒绝原因
+const showRejectReason = async (noteId) => {
+  try {
+    const res = await getNoteReviewLog(noteId)
+    if (res && res.success) {
+      const rejectLog = (res.result || []).find(item => item.reviewType === 'MANUAL_REJECT')
+      rejectReasonText.value = rejectLog ? rejectLog.rejectReason : '暂无详细原因'
+      rejectDialogVisible.value = true
+    } else {
+      ElMessage.error('获取拒绝原因失败')
+    }
+  } catch (e) {
+    ElMessage.error('网络异常')
+  }
 }
 
 onMounted(() => {
