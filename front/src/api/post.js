@@ -62,6 +62,22 @@ export const likePost = (id) => {
   })
 }
 
+export const getPostLiked = (id) => {
+  return request({
+    url: `/post/liked/${id}`,
+    method: 'get',
+    silent: true
+  })
+}
+
+export const pinPost = (id, pinned) => {
+  return request({
+    url: `/post/admin/pin/${id}`,
+    method: 'post',
+    params: { pinned }
+  })
+}
+
 export const getPostReplies = (postId) => {
   return request({
     url: `/post/reply/list/${postId}`,

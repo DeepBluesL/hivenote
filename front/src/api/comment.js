@@ -46,6 +46,13 @@ export const getRecentComments = (limit = 10) => {
   })
 }
 
+export const getMyComments = () => {
+  return request({
+    url: '/comment/myList',
+    method: 'get'
+  })
+}
+
 /**
  * 管理员获取所有评论列表
  */

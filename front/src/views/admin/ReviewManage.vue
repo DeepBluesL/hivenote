@@ -254,6 +254,60 @@
             </div>
           </el-card>
         </el-tab-pane>
+
+        <el-tab-pane label="举报处理" name="reports">
+          <el-card class="filter-card">
+            <el-form :inline="true" :model="reportQuery">
+              <el-form-item label="状态">
+                <el-select v-model="reportQuery.status" placeholder="全部" @change="loadReportList" clearable style="width: 130px">
+                  <el-option label="待处理" :value="0" />
+                  <el-option label="已通过" :value="1" />
+                  <el-option label="已驳回" :value="2" />
+                </el-select>
+              </el-form-item>
+              <el-form-item>
+                <el-button type="primary" @click="loadReportList">查询</el-button>
+              </el-form-item>
+            </el-form>
+          </el-card>
+          <el-card class="table-card">
+            <el-table :data="reportList" v-loading="reportLoading" stripe>
+              <el-table-column prop="id" label="ID" width="180" />
+              <el-table-column prop="targetType" label="类型" width="110" />
+              <el-table-column prop="targetId" label="对象ID" width="180" show-overflow-tooltip />
+              <el-table-column prop="reporterName" label="举报人" width="120" />
+              <el-table-column prop="reason" label="举报原因" min-width="220" show-overflow-tooltip />
+              <el-table-column label="状态" width="90">
+                <template #default="{ row }">
+                  <el-tag v-if="row.status === 0" type="warning">待处理</el-tag>
+                  <el-tag v-else-if="row.status === 1" type="success">已通过</el-tag>
+                  <el-tag v-else type="info">已驳回</el-tag>
+                </template>
+              </el-table-column>
+              <el-table-column prop="handleResult" label="处理说明" min-width="180" show-overflow-tooltip />
+              <el-table-column label="举报时间" width="170">
+                <template #default="{ row }">{{ formatDate(row.createTime) }}</template>
+              </el-table-column>
+              <el-table-column label="操作" width="160" fixed="right">
+                <template #default="{ row }">
+                  <el-button v-if="row.status === 0" link type="success" @click="openReportDialog(row, true)">通过</el-button>
+                  <el-button v-if="row.status === 0" link type="danger" @click="openReportDialog(row, false)">驳回</el-button>
+                </template>
+              </el-table-column>
+            </el-table>
+            <div class="pagination">
+              <el-pagination
+                v-model:current-page="reportQuery.page"
+                v-model:page-size="reportQuery.size"
+                :page-sizes="[20, 50, 100]"
+                :total="reportTotal"
+                layout="total, sizes, prev, pager, next"
+                @size-change="loadReportList"
+                @current-change="loadReportList"
+              />
+            </div>
+          </el-card>
+        </el-tab-pane>
       </el-tabs>
     </div>
 
@@ -309,6 +363,21 @@
       <div v-if="aiSuggestion" style="white-space: pre-wrap; padding: 10px;">{{ aiSuggestion }}</div>
       <el-empty v-else description="暂无建议" />
     </el-dialog>
+
+    <el-dialog v-model="reportDialogVisible" :title="reportAccepted ? '通过举报' : '驳回举报'" width="500px">
+      <el-input
+        v-model="reportHandleResult"
+        type="textarea"
+        :rows="4"
+        placeholder="填写处理说明"
+      />
+      <template #footer>
+        <el-button @click="reportDialogVisible = false">取消</el-button>
+        <el-button :type="reportAccepted ? 'success' : 'danger'" @click="confirmHandleReport" :loading="reportSubmitting">
+          确认
+        </el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -323,6 +392,7 @@ import {
 } from '@/api/note'
 import { getAdminCommentList, deleteComment } from '@/api/comment'
 import { getAdminUserList, banUser, unbanUser, banAvatar } from '@/api/user'
+import { getAdminReportList, handleReport as handleReportApi } from '@/api/report'
 import { getUserInfo as getUserInfoStorage, clearAuth } from '@/utils/auth'
 
 const router = useRouter()
@@ -538,6 +608,61 @@ const handleBanAvatar = async (row) => { /* 保持不变 */ }
 // 完整管理页面非常长，为避免字符串过长，这里只给出核心改动部分，建议用上述命令覆盖完整文件，但需要把用户管理、评论管理的方法补全。
 // 请使用下面的完整文件覆盖方式
 
+// 举报处理
+const reportLoading = ref(false)
+const reportList = ref([])
+const reportTotal = ref(0)
+const reportQuery = reactive({ page: 1, size: 20, status: 0 })
+const reportDialogVisible = ref(false)
+const reportAccepted = ref(false)
+const reportSubmitting = ref(false)
+const currentReport = ref(null)
+const reportHandleResult = ref('')
+
+const loadReportList = async () => {
+  reportLoading.value = true
+  try {
+    const res = await getAdminReportList(reportQuery)
+    if (res && res.success) {
+      reportList.value = res.result.records || []
+      reportTotal.value = res.result.total || 0
+    }
+  } catch (error) {
+    ElMessage.error('加载举报列表失败')
+  } finally {
+    reportLoading.value = false
+  }
+}
+
+const openReportDialog = (row, accepted) => {
+  currentReport.value = row
+  reportAccepted.value = accepted
+  reportHandleResult.value = accepted ? '举报属实，相关内容已处理' : '举报依据不足，暂不处理'
+  reportDialogVisible.value = true
+}
+
+const confirmHandleReport = async () => {
+  if (!currentReport.value) return
+  reportSubmitting.value = true
+  try {
+    const res = await handleReportApi(currentReport.value.id, {
+      accepted: reportAccepted.value,
+      handleResult: reportHandleResult.value
+    })
+    if (res && res.success) {
+      ElMessage.success('处理成功')
+      reportDialogVisible.value = false
+      loadReportList()
+    } else {
+      ElMessage.error(res?.message || '处理失败')
+    }
+  } catch (error) {
+    ElMessage.error('处理失败')
+  } finally {
+    reportSubmitting.value = false
+  }
+}
+
 // 通用
 const handleCommand = (command) => {
   if (command === 'logout') {
@@ -562,6 +687,7 @@ const formatDate = (date) => {
 watch(activeTab, (val) => {
   if (val === 'comments' && commentList.value.length === 0) loadCommentList()
   if (val === 'users' && userList.value.length === 0) loadUserList()
+  if (val === 'reports' && reportList.value.length === 0) loadReportList()
 })
 
 onMounted(() => {

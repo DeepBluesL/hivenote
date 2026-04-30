@@ -4,8 +4,13 @@ import cn.hutool.core.util.IdUtil;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.hivenote.common.Result;
 import com.hivenote.entity.Comment;
+import com.hivenote.entity.Note;
+import com.hivenote.entity.Notification;
 import com.hivenote.entity.User;
 import com.hivenote.service.ICommentService;
+import com.hivenote.service.INoteService;
+import com.hivenote.service.INotificationService;
+import com.hivenote.service.IUserService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
@@ -18,6 +23,15 @@ public class CommentController {
 
     @Autowired
     private ICommentService commentService;
+
+    @Autowired
+    private INoteService noteService;
+
+    @Autowired
+    private IUserService userService;
+
+    @Autowired
+    private INotificationService notificationService;
 
     /**
      * 获取某篇笔记的评论列表（支持层级结构）
@@ -96,10 +110,28 @@ public class CommentController {
         boolean saved = commentService.save(comment);
 
         if (saved) {
+            sendCommentNotification(comment, currentUser);
             return Result.success("评论成功");
         } else {
             return Result.error("评论失败");
         }
+    }
+
+    /**
+     * 获取我的评论
+     */
+    @GetMapping("/myList")
+    public Result<List<Comment>> getMyComments(@RequestHeader("accessToken") String token) {
+        User currentUser = UserController.sessionMap.get(token);
+        if (currentUser == null) {
+            return Result.error(401, "请先登录");
+        }
+
+        QueryWrapper<Comment> qw = new QueryWrapper<>();
+        qw.eq("username", currentUser.getUsername());
+        qw.eq("del_flag", 0);
+        qw.orderByDesc("create_time");
+        return Result.success(commentService.list(qw));
     }
 
     /**
@@ -185,5 +217,49 @@ public class CommentController {
                 .map(this::commentToMap)
                 .collect(Collectors.toList());
         return Result.success(result);
+    }
+
+    private void sendCommentNotification(Comment comment, User currentUser) {
+        if (comment.getParentId() != null && !comment.getParentId().trim().isEmpty()) {
+            Comment parent = commentService.getById(comment.getParentId());
+            if (parent != null) {
+                notifyUsername(parent.getUsername(), currentUser, "评论收到回复",
+                        displayName(currentUser) + " 回复了你的评论");
+            }
+            return;
+        }
+
+        Note note = noteService.getById(comment.getNoteId());
+        if (note != null) {
+            notifyUsername(note.getCreateBy(), currentUser, "笔记收到新评论",
+                    displayName(currentUser) + " 评论了你的笔记：" + shortText(note.getTitle()));
+        }
+    }
+
+    private void notifyUsername(String username, User actor, String title, String content) {
+        if (username == null || username.equals(actor.getUsername())) return;
+        User receiver = userService.getOne(new QueryWrapper<User>().eq("username", username));
+        if (receiver == null) return;
+
+        Notification notification = new Notification();
+        notification.setId(IdUtil.getSnowflakeNextId());
+        notification.setUserId(receiver.getId());
+        notification.setTitle(title);
+        notification.setContent(content);
+        notification.setType(2);
+        notification.setIsRead(0);
+        notification.setCreateTime(new Date());
+        notificationService.save(notification);
+    }
+
+    private String displayName(User user) {
+        return user.getNickname() != null && !user.getNickname().trim().isEmpty()
+                ? user.getNickname()
+                : user.getUsername();
+    }
+
+    private String shortText(String text) {
+        if (text == null) return "";
+        return text.length() > 30 ? text.substring(0, 30) + "..." : text;
     }
 }

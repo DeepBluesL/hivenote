@@ -4,16 +4,22 @@ import cn.hutool.core.util.IdUtil;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.hivenote.common.Result;
+import com.hivenote.entity.Notification;
 import com.hivenote.entity.Post;
+import com.hivenote.entity.PostLike;
 import com.hivenote.entity.PostReply;
 import com.hivenote.entity.User;
+import com.hivenote.service.INotificationService;
+import com.hivenote.service.IPostLikeService;
 import com.hivenote.service.IPostReplyService;
 import com.hivenote.service.IPostService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/post")
@@ -25,6 +31,12 @@ public class PostController {
     @Autowired
     private IPostReplyService postReplyService;
 
+    @Autowired
+    private IPostLikeService postLikeService;
+
+    @Autowired
+    private INotificationService notificationService;
+
     /**
      * 热门帖子（按浏览+点赞+回复综合排序）
      */
@@ -32,7 +44,8 @@ public class PostController {
     public Result<List<Post>> getHotPosts(@RequestParam(defaultValue = "10") int limit) {
         QueryWrapper<Post> qw = new QueryWrapper<>();
         qw.eq("status", 1);
-        qw.last("ORDER BY IFNULL(like_count,0)*3 + IFNULL(view_count,0) + IFNULL(reply_count,0)*5 DESC LIMIT " + limit);
+        qw.last("ORDER BY IFNULL(pinned,0) DESC, IFNULL(pinned_time, create_time) DESC, " +
+                "IFNULL(like_count,0)*3 + IFNULL(view_count,0) + IFNULL(reply_count,0)*5 DESC LIMIT " + limit);
         return Result.success(postService.list(qw));
     }
 
@@ -49,6 +62,8 @@ public class PostController {
         if (keyword != null && !keyword.trim().isEmpty()) {
             qw.and(w -> w.like("title", keyword).or().like("content", keyword));
         }
+        qw.orderByDesc("pinned");
+        qw.orderByDesc("pinned_time");
         qw.orderByDesc("create_time");
         return Result.success(postService.page(pageParam, qw));
     }
@@ -93,6 +108,7 @@ public class PostController {
         post.setViewCount(0);
         post.setLikeCount(0);
         post.setReplyCount(0);
+        post.setPinned(0);
         post.setStatus(1);
         post.setCreateTime(new Date());
         post.setUpdateTime(new Date());
@@ -201,9 +217,74 @@ public class PostController {
             return Result.error("帖子不存在");
         }
 
-        post.setLikeCount((post.getLikeCount() != null ? post.getLikeCount() : 0) + 1);
+        QueryWrapper<PostLike> qw = new QueryWrapper<>();
+        qw.eq("post_id", id);
+        qw.eq("user_id", currentUser.getId());
+        PostLike existing = postLikeService.getOne(qw);
+
+        boolean liked;
+        int likeCount = post.getLikeCount() != null ? post.getLikeCount() : 0;
+        if (existing != null) {
+            postLikeService.removeById(existing.getId());
+            likeCount = Math.max(0, likeCount - 1);
+            liked = false;
+        } else {
+            PostLike like = new PostLike();
+            like.setId(IdUtil.getSnowflakeNextId());
+            like.setPostId(id);
+            like.setUserId(currentUser.getId());
+            like.setCreateTime(new Date());
+            postLikeService.save(like);
+            likeCount++;
+            liked = true;
+        }
+
+        post.setLikeCount(likeCount);
         postService.updateById(post);
-        return Result.success(post.getLikeCount());
+
+        Map<String, Object> result = new HashMap<>();
+        result.put("liked", liked);
+        result.put("likeCount", likeCount);
+        return Result.success(result);
+    }
+
+    @GetMapping("/liked/{id}")
+    public Result<Map<String, Object>> isLiked(@PathVariable Long id,
+                                               @RequestHeader(value = "accessToken", required = false) String token) {
+        Map<String, Object> result = new HashMap<>();
+        User currentUser = token == null ? null : UserController.sessionMap.get(token);
+        if (currentUser == null) {
+            result.put("liked", false);
+            return Result.success(result);
+        }
+        long count = postLikeService.count(new QueryWrapper<PostLike>()
+                .eq("post_id", id)
+                .eq("user_id", currentUser.getId()));
+        result.put("liked", count > 0);
+        return Result.success(result);
+    }
+
+    @PostMapping("/admin/pin/{id}")
+    public Result<Object> pinPost(@PathVariable Long id,
+                                  @RequestParam(defaultValue = "1") int pinned,
+                                  @RequestHeader("accessToken") String token) {
+        User currentUser = UserController.sessionMap.get(token);
+        if (currentUser == null) {
+            return Result.error(401, "请先登录");
+        }
+        if (currentUser.getType() == null || currentUser.getType() != 1) {
+            return Result.error(403, "无权操作");
+        }
+
+        Post post = postService.getById(id);
+        if (post == null) {
+            return Result.error("帖子不存在");
+        }
+        post.setPinned(pinned == 1 ? 1 : 0);
+        post.setPinnedTime(pinned == 1 ? new Date() : null);
+        post.setUpdateTime(new Date());
+        postService.updateById(post);
+        return Result.success(pinned == 1 ? "已置顶" : "已取消置顶");
     }
 
     // ========== 回复相关 ==========
@@ -256,6 +337,10 @@ public class PostController {
         post.setReplyCount((post.getReplyCount() != null ? post.getReplyCount() : 0) + 1);
         post.setUpdateTime(new Date());
         postService.updateById(post);
+        if (!post.getUserId().equals(currentUser.getId())) {
+            saveNotification(post.getUserId(), "帖子收到新回复",
+                    displayName(currentUser) + " 回复了你的帖子：" + shortText(post.getTitle()));
+        }
 
         return Result.success("回复成功");
     }
@@ -302,5 +387,28 @@ public class PostController {
     public Result<Object> uploadImage() {
         // 复用 FileController 的 uploadAvatar 逻辑，前端直接调用 /file/uploadAvatar
         return Result.error("请使用 /file/uploadPostImage 接口");
+    }
+
+    private void saveNotification(Long userId, String title, String content) {
+        Notification notification = new Notification();
+        notification.setId(IdUtil.getSnowflakeNextId());
+        notification.setUserId(userId);
+        notification.setTitle(title);
+        notification.setContent(content);
+        notification.setType(2);
+        notification.setIsRead(0);
+        notification.setCreateTime(new Date());
+        notificationService.save(notification);
+    }
+
+    private String displayName(User user) {
+        return user.getNickname() != null && !user.getNickname().trim().isEmpty()
+                ? user.getNickname()
+                : user.getUsername();
+    }
+
+    private String shortText(String text) {
+        if (text == null) return "";
+        return text.length() > 30 ? text.substring(0, 30) + "..." : text;
     }
 }

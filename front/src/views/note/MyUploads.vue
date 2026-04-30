@@ -22,25 +22,35 @@
             <el-tag v-if="row.status === 0" type="warning">审核中</el-tag>
             <el-tag v-else-if="row.status === 1" type="success">已通过</el-tag>
             <el-tag v-else-if="row.status === 2" type="danger">已拒绝</el-tag>
+            <el-tag v-else-if="row.status === 3" type="info">草稿</el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="220">
+        <el-table-column label="操作" width="280">
           <template #default="{ row }">
-            <el-button link type="primary" @click="goDetail(row.id)">查看</el-button>
+            <el-button v-if="row.status === 1" link type="primary" @click="goDetail(row.id)">查看</el-button>
+            <el-button v-if="[2,3].includes(row.status)" link type="primary" @click="editNote(row.id)">
+              {{ row.status === 2 ? '修改重提' : '编辑草稿' }}
+            </el-button>
+            <el-button link type="info" @click="showReviewHistory(row.id)">审核记录</el-button>
             <el-button link type="danger" @click="deleteNote(row)">删除</el-button>
-            <el-button
-              v-if="row.status === 2"
-              link
-              type="warning"
-              @click="showRejectReason(row.id)"
-            >查看原因</el-button>
           </template>
         </el-table-column>
       </el-table>
 
-      <!-- 拒绝原因弹窗 -->
-      <el-dialog v-model="reasonDialogVisible" title="拒绝原因" width="500px">
-        <div style="white-space: pre-wrap; padding: 10px;">{{ rejectReasonText }}</div>
+      <el-dialog v-model="historyDialogVisible" title="审核记录" width="620px">
+        <el-timeline v-if="reviewHistory.length">
+          <el-timeline-item
+            v-for="item in reviewHistory"
+            :key="item.id"
+            :timestamp="formatDate(item.createTime)"
+          >
+            <div class="history-title">{{ getReviewTypeLabel(item.reviewType) }}</div>
+            <div v-if="item.rejectReason" class="history-body">{{ item.rejectReason }}</div>
+            <div v-if="item.aiSuggestion" class="history-body">{{ item.aiSuggestion }}</div>
+            <div class="history-meta">处理人：{{ item.reviewer || '-' }}</div>
+          </el-timeline-item>
+        </el-timeline>
+        <el-empty v-else description="暂无审核记录" />
       </el-dialog>
     </div>
   </div>
@@ -51,27 +61,23 @@ import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import NavBar from '../../components/NavBar.vue'
-import { getNoteReviewLog } from '../../api/note'
-import axios from 'axios'
+import { deleteNote as deleteNoteApi, getNoteReviewLog } from '../../api/note'
+import request from '@/utils/request'
 
 const router = useRouter()
 const loading = ref(false)
 const myNotes = ref([])
-const reasonDialogVisible = ref(false)
-const rejectReasonText = ref('')
+const historyDialogVisible = ref(false)
+const reviewHistory = ref([])
 
 const fetchMyNotes = async () => {
   loading.value = true
   try {
-    const token = localStorage.getItem('token')
-    const res = await axios.get('http://localhost:8080/zwz/note/myList', {
-      headers: { accessToken: token }
-    })
-    const data = res.data
-    if (data && data.success) {
-      myNotes.value = data.result || []
+    const res = await request({ url: '/note/myList', method: 'get' })
+    if (res && res.success) {
+      myNotes.value = res.result || []
     } else {
-      ElMessage.error(data.message || '加载失败')
+      ElMessage.error(res.message || '加载失败')
     }
   } catch (e) {
     ElMessage.error('加载我的上传列表失败')
@@ -81,14 +87,12 @@ const fetchMyNotes = async () => {
 }
 
 const goDetail = (id) => router.push(`/note/detail/${id}`)
+const editNote = (id) => router.push(`/note/upload?id=${id}`)
 
 const deleteNote = async (row) => {
   try {
     await ElMessageBox.confirm('确定删除该笔记？', '提示', { type: 'warning' })
-    const token = localStorage.getItem('token')
-    await axios.post(`http://localhost:8080/zwz/note/delete/${row.id}`, {}, {
-      headers: { accessToken: token }
-    })
+    await deleteNoteApi(row.id)
     ElMessage.success('删除成功')
     fetchMyNotes()
   } catch (e) {
@@ -96,19 +100,29 @@ const deleteNote = async (row) => {
   }
 }
 
-const showRejectReason = async (noteId) => {
+const showReviewHistory = async (noteId) => {
   try {
     const res = await getNoteReviewLog(noteId)
     if (res && res.success) {
-      const rejectLog = (res.result || []).find(item => item.reviewType === 'MANUAL_REJECT')
-      rejectReasonText.value = rejectLog ? rejectLog.rejectReason : '暂无详细原因'
-      reasonDialogVisible.value = true
+      reviewHistory.value = res.result || []
+      historyDialogVisible.value = true
     } else {
-      ElMessage.error('获取拒绝原因失败')
+      ElMessage.error('获取审核记录失败')
     }
   } catch (e) {
     ElMessage.error('网络异常')
   }
+}
+
+const getReviewTypeLabel = (type) => {
+  const map = {
+    SUBMIT: '提交审核',
+    RESUBMIT: '重新提交',
+    MANUAL_APPROVE: '审核通过',
+    MANUAL_REJECT: '审核拒绝',
+    AI_SUGGESTION: 'AI 建议'
+  }
+  return map[type] || type || '审核记录'
 }
 
 const getCategoryLabel = (cat) => {
@@ -131,4 +145,7 @@ onMounted(fetchMyNotes)
 .main-content { max-width: 1200px; margin: 0 auto; padding: 30px 20px; }
 .section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
 .section-header h2 { margin: 0; }
+.history-title { font-weight: 600; color: #303133; }
+.history-body { white-space: pre-wrap; margin-top: 6px; color: #606266; }
+.history-meta { margin-top: 6px; font-size: 12px; color: #909399; }
 </style>

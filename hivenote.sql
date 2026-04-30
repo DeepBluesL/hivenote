@@ -110,7 +110,7 @@ CREATE TABLE `t_note` (
   `cover_url` varchar(500) DEFAULT NULL COMMENT '封面图片地址',
   `view_count` int DEFAULT '0' COMMENT '浏览量',
   `download_count` int DEFAULT '0' COMMENT '下载量',
-  `status` int DEFAULT '1' COMMENT '状态 0审核中 1正常',
+  `status` int DEFAULT '1' COMMENT '状态 0审核中 1正常 2已拒绝 3草稿',
   `create_by` varchar(32) DEFAULT NULL COMMENT '创建人(存储用户名)',
   `school` varchar(255) DEFAULT NULL COMMENT '上传者所属学校',
   `create_time` datetime DEFAULT NULL COMMENT '创建时间',
@@ -123,6 +123,24 @@ CREATE TABLE `t_note` (
 /*Data for the table `t_note` */
 
 insert  into `t_note`(`id`,`title`,`category`,`summary`,`file_url`,`view_count`,`download_count`,`status`,`create_by`,`school`,`create_time`,`update_by`,`update_time`,`del_flag`) values ('1','HiveNote开发实战手册','SE','这是一份关于如何开发HiveNote的后端指南','http://localhost:8080/file/test.pdf',1030,68,1,'admin',NULL,'2025-12-10 10:04:15',NULL,NULL,0),('1998613851481767936','测试','CS','','http://localhost:8080/zwz/file/view/20251210_27e5941d2dfa4710a89ca5a18cae638c.png',13,4,1,'user',NULL,'2025-12-10 12:40:49','user','2025-12-10 16:10:55',1),('1998666886870405120','测试','CS','测试测试测试测试测试测试测试测试','http://localhost:8080/zwz/file/view/20251210_72c596c4c59d4fc6b791ccf6baaf0e2f.zip',13,1,1,'user',NULL,'2025-12-10 16:11:34',NULL,NULL,0),('1998679106706690048','测试1','Math','测试1测试1测试1测试1测试1测试1测试1测试1测试1测试1测试1测试1测试1测试1','http://localhost:8080/zwz/file/view/20251210_e3ae82f366034e549434d88efb533d97.zip',2,1,1,'user',NULL,'2025-12-10 17:00:07',NULL,NULL,0),('1998785602103013376','测试2','GE','测试2测试2测试2测试2测试2测试2测试2测试2测试2','http://localhost:8080/zwz/file/view/20251211_10f79f41fd014e969e4deadc4d23fa6f.mp4',1,0,2,'user',NULL,'2025-12-11 00:03:18','admin','2025-12-11 00:03:53',0),('1998786352925372416','测试3','GE','测试3测试3测试3测试3测试3','http://localhost:8080/zwz/file/view/20251211_f7701ad4ffa14ff498719e96b4bcc99e.mp4',0,0,1,'user',NULL,'2025-12-11 00:06:17','admin','2025-12-11 00:06:45',0),('1998786603719585792','测试4','Math','测试4测试4测试4测试4测试4','http://localhost:8080/zwz/file/view/20251211_ce78b4ae3ec64676949533cc9688b78d.mp4',0,0,0,'user',NULL,'2025-12-11 00:07:17',NULL,NULL,0);
+
+/*Table structure for table `t_note_review` */
+
+DROP TABLE IF EXISTS `t_note_review`;
+
+CREATE TABLE `t_note_review` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `note_id` varchar(32) NOT NULL COMMENT '笔记ID',
+  `reviewer` varchar(64) DEFAULT '' COMMENT '审核人或提交人',
+  `review_type` varchar(32) DEFAULT '' COMMENT '审核记录类型',
+  `ai_suggestion` text COMMENT 'AI审核建议',
+  `reject_reason` varchar(1000) DEFAULT '' COMMENT '拒绝原因',
+  `status` int DEFAULT '0' COMMENT '状态 0未读 1已读',
+  `create_time` datetime DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  PRIMARY KEY (`id`),
+  KEY `idx_note_id` (`note_id`),
+  KEY `idx_create_time` (`create_time`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='笔记审核记录表';
 
 /*Table structure for table `t_favorite` */
 
@@ -161,6 +179,69 @@ ALTER TABLE `t_note` ADD COLUMN `favorite_count` int DEFAULT 0 COMMENT '收藏�
 /* Add parent_id to t_comment for nested replies */
 ALTER TABLE `t_comment` ADD COLUMN `parent_id` varchar(32) DEFAULT NULL COMMENT '父评论ID(回复功能)' AFTER `note_id`;
 ALTER TABLE `t_comment` ADD COLUMN `reply_to` varchar(255) DEFAULT NULL COMMENT '回复目标用户名' AFTER `parent_id`;
+
+/* Community post tables */
+CREATE TABLE IF NOT EXISTS `t_post` (
+  `id` bigint NOT NULL,
+  `title` varchar(200) NOT NULL COMMENT '帖子标题',
+  `content` text COMMENT '帖子内容',
+  `images` varchar(2000) DEFAULT '' COMMENT '图片URL，逗号分隔',
+  `user_id` bigint NOT NULL COMMENT '发帖人ID',
+  `nickname` varchar(100) DEFAULT '' COMMENT '发帖人昵称',
+  `avatar` varchar(500) DEFAULT '' COMMENT '发帖人头像',
+  `view_count` int DEFAULT '0' COMMENT '浏览量',
+  `like_count` int DEFAULT '0' COMMENT '点赞数',
+  `reply_count` int DEFAULT '0' COMMENT '回复数',
+  `pinned` int DEFAULT '0' COMMENT '是否置顶 0否 1是',
+  `pinned_time` datetime DEFAULT NULL COMMENT '置顶时间',
+  `status` int DEFAULT '1' COMMENT '状态 1正常 0删除',
+  `create_time` datetime DEFAULT CURRENT_TIMESTAMP,
+  `update_time` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_user_id` (`user_id`),
+  KEY `idx_status_time` (`status`, `create_time`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='讨论帖子表';
+
+CREATE TABLE IF NOT EXISTS `t_post_reply` (
+  `id` bigint NOT NULL,
+  `post_id` bigint NOT NULL COMMENT '帖子ID',
+  `content` text COMMENT '回复内容',
+  `user_id` bigint NOT NULL COMMENT '回复人ID',
+  `nickname` varchar(100) DEFAULT '' COMMENT '回复人昵称',
+  `avatar` varchar(500) DEFAULT '' COMMENT '回复人头像',
+  `user_type` int DEFAULT '0' COMMENT '用户类型 0普通 1管理员',
+  `status` int DEFAULT '1' COMMENT '状态 1正常 0删除',
+  `create_time` datetime DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_post_id` (`post_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='帖子回复表';
+
+CREATE TABLE IF NOT EXISTS `t_post_like` (
+  `id` bigint NOT NULL,
+  `post_id` bigint NOT NULL COMMENT '帖子ID',
+  `user_id` bigint NOT NULL COMMENT '用户ID',
+  `create_time` datetime DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_post_user` (`post_id`, `user_id`),
+  KEY `idx_user_id` (`user_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='帖子点赞记录表';
+
+CREATE TABLE IF NOT EXISTS `t_report` (
+  `id` bigint NOT NULL,
+  `target_type` varchar(30) NOT NULL COMMENT '举报对象类型',
+  `target_id` varchar(64) NOT NULL COMMENT '举报对象ID',
+  `reporter_id` bigint NOT NULL COMMENT '举报人ID',
+  `reporter_name` varchar(100) DEFAULT '' COMMENT '举报人',
+  `reason` varchar(1000) DEFAULT '' COMMENT '举报原因',
+  `status` int DEFAULT '0' COMMENT '状态 0待处理 1已通过 2已驳回',
+  `handler` varchar(100) DEFAULT '' COMMENT '处理人',
+  `handle_result` varchar(1000) DEFAULT '' COMMENT '处理说明',
+  `create_time` datetime DEFAULT CURRENT_TIMESTAMP,
+  `handle_time` datetime DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `idx_status_time` (`status`, `create_time`),
+  KEY `idx_target` (`target_type`, `target_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='内容举报表';
 
 /*!40101 SET SQL_MODE=@OLD_SQL_MODE */;
 /*!40014 SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS */;

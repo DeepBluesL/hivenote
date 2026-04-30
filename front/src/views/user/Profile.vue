@@ -132,19 +132,18 @@
                   <el-tag type="success" v-if="scope.row.status === 1">已通过</el-tag>
                   <el-tag type="warning" v-else-if="scope.row.status === 0">待审核</el-tag>
                   <el-tag type="danger" v-else-if="scope.row.status === 2">已拒绝</el-tag>
+                  <el-tag type="info" v-else-if="scope.row.status === 3">草稿</el-tag>
                   <el-tag type="info" v-else>未知</el-tag>
                 </template>
               </el-table-column>
-              <el-table-column label="操作" width="200">
+              <el-table-column label="操作" width="260">
                 <template #default="scope">
-                  <el-button type="primary" link @click="router.push(`/note/detail/${scope.row.id}`)">查看</el-button>
+                  <el-button v-if="scope.row.status === 1" type="primary" link @click="router.push(`/note/detail/${scope.row.id}`)">查看</el-button>
+                  <el-button v-if="[2,3].includes(scope.row.status)" type="primary" link @click="router.push(`/note/upload?id=${scope.row.id}`)">
+                    {{ scope.row.status === 2 ? '修改重提' : '编辑草稿' }}
+                  </el-button>
+                  <el-button type="info" link @click="showReviewHistory(scope.row.id)">审核记录</el-button>
                   <el-button type="danger" link @click="handleDelete(scope.row)">删除</el-button>
-                  <el-button
-                    v-if="scope.row.status === 2"
-                    type="warning"
-                    link
-                    @click="showRejectReason(scope.row.id)"
-                  >查看原因</el-button>
                 </template>
               </el-table-column>
             </el-table>
@@ -208,11 +207,69 @@
             <el-empty v-if="!loadingPosts && myPosts.length === 0" description="还没有发布任何帖子" />
           </div>
         </el-tab-pane>
+
+        <el-tab-pane label="我的评论" name="comments">
+          <div class="tab-content">
+            <h3>我的评论 ({{ myComments.length }})</h3>
+            <el-table :data="myComments" style="width: 100%" border v-loading="loadingComments">
+              <el-table-column prop="content" label="评论内容" min-width="220" show-overflow-tooltip />
+              <el-table-column prop="noteId" label="笔记ID" width="180" show-overflow-tooltip />
+              <el-table-column label="评论时间" width="150">
+                <template #default="scope">{{ formatDate(scope.row.createTime) }}</template>
+              </el-table-column>
+              <el-table-column label="操作" width="100" align="center">
+                <template #default="scope">
+                  <el-button type="primary" link @click="router.push(`/note/detail/${scope.row.noteId}`)">查看</el-button>
+                </template>
+              </el-table-column>
+            </el-table>
+            <el-empty v-if="!loadingComments && myComments.length === 0" description="还没有发表任何评论" />
+          </div>
+        </el-tab-pane>
+
+        <el-tab-pane label="通知中心" name="notifications">
+          <div class="tab-content">
+            <div class="tab-header">
+              <h3>通知中心 ({{ notifications.length }})</h3>
+              <el-button size="small" @click="handleReadAll" :disabled="notifications.length === 0">全部已读</el-button>
+            </div>
+            <el-table :data="notifications" style="width: 100%" border v-loading="loadingNotifications">
+              <el-table-column label="状态" width="80" align="center">
+                <template #default="scope">
+                  <el-tag v-if="scope.row.isRead === 0" type="danger" size="small">未读</el-tag>
+                  <el-tag v-else type="info" size="small">已读</el-tag>
+                </template>
+              </el-table-column>
+              <el-table-column prop="title" label="标题" width="160" show-overflow-tooltip />
+              <el-table-column prop="content" label="内容" min-width="260" show-overflow-tooltip />
+              <el-table-column label="时间" width="150">
+                <template #default="scope">{{ formatDate(scope.row.createTime) }}</template>
+              </el-table-column>
+              <el-table-column label="操作" width="100" align="center">
+                <template #default="scope">
+                  <el-button v-if="scope.row.isRead === 0" type="primary" link @click="handleRead(scope.row)">标记已读</el-button>
+                </template>
+              </el-table-column>
+            </el-table>
+            <el-empty v-if="!loadingNotifications && notifications.length === 0" description="暂无通知" />
+          </div>
+        </el-tab-pane>
       </el-tabs>
 
-      <!-- 拒绝原因弹窗 -->
-      <el-dialog v-model="rejectDialogVisible" title="拒绝原因" width="500px">
-        <div style="white-space: pre-wrap; padding: 10px;">{{ rejectReasonText }}</div>
+      <el-dialog v-model="rejectDialogVisible" title="审核记录" width="620px">
+        <el-timeline v-if="reviewHistory.length">
+          <el-timeline-item
+            v-for="item in reviewHistory"
+            :key="item.id"
+            :timestamp="formatDate(item.createTime)"
+          >
+            <div class="history-title">{{ getReviewTypeLabel(item.reviewType) }}</div>
+            <div v-if="item.rejectReason" class="history-body">{{ item.rejectReason }}</div>
+            <div v-if="item.aiSuggestion" class="history-body">{{ item.aiSuggestion }}</div>
+            <div class="history-meta">处理人：{{ item.reviewer || '-' }}</div>
+          </el-timeline-item>
+        </el-timeline>
+        <el-empty v-else description="暂无审核记录" />
       </el-dialog>
     </div>
   </div>
@@ -224,10 +281,11 @@ import { useRouter } from 'vue-router'
 import NavBar from '../../components/NavBar.vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Camera } from '@element-plus/icons-vue'
-import { getUserInfo, updateUserProfile, changePassword, uploadAvatar, setAvatar } from '@/api/user'
+import { getUserInfo, updateUserProfile, changePassword, uploadAvatar, setAvatar, getNotifications, markNotificationRead, markAllNotificationsRead } from '@/api/user'
 import { getUserInfo as getStoredUserInfo, setUserInfo as setStoredUserInfo } from '@/utils/auth'
 import { getMyFavorites } from '@/api/favorite'
 import { getMyPosts, deletePost } from '@/api/post'
+import { getMyComments } from '@/api/comment'
 import { getSchoolList } from '@/api/school'
 import { getNoteReviewLog } from '@/api/note'
 import request from '@/utils/request'
@@ -245,6 +303,10 @@ const defaultAvatar = 'https://cube.elemecdn.com/0/88/03b0d39583f48206768a7534e5
 
 const myPosts = ref([])
 const loadingPosts = ref(false)
+const myComments = ref([])
+const loadingComments = ref(false)
+const notifications = ref([])
+const loadingNotifications = ref(false)
 
 const showEditDialog = ref(false)
 const showPasswordDialog = ref(false)
@@ -263,7 +325,7 @@ const editForm = ref({
 
 // 拒绝原因相关
 const rejectDialogVisible = ref(false)
-const rejectReasonText = ref('')
+const reviewHistory = ref([])
 
 const handleSchoolSearch = async (query) => {
   if (!query) {
@@ -385,6 +447,49 @@ const loadMyPosts = async () => {
     console.error('获取帖子列表错误:', error)
   } finally {
     loadingPosts.value = false
+  }
+}
+
+const loadMyComments = async () => {
+  loadingComments.value = true
+  try {
+    const res = await getMyComments()
+    if (res && res.success) {
+      myComments.value = res.result || []
+    }
+  } catch (error) {
+    console.error('获取评论列表错误:', error)
+  } finally {
+    loadingComments.value = false
+  }
+}
+
+const loadNotifications = async () => {
+  loadingNotifications.value = true
+  try {
+    const res = await getNotifications()
+    if (res && res.success) {
+      notifications.value = res.result || []
+    }
+  } catch (error) {
+    console.error('获取通知列表错误:', error)
+  } finally {
+    loadingNotifications.value = false
+  }
+}
+
+const handleRead = async (row) => {
+  const res = await markNotificationRead(row.id)
+  if (res && res.success) {
+    row.isRead = 1
+  }
+}
+
+const handleReadAll = async () => {
+  const res = await markAllNotificationsRead()
+  if (res && res.success) {
+    notifications.value.forEach(item => { item.isRead = 1 })
+    ElMessage.success('已全部标记为已读')
   }
 }
 
@@ -540,16 +645,25 @@ const handleDialogAvatarChange = (uploadFile) => {
   doAvatarUpload(uploadFile.raw)
 }
 
-// 查看拒绝原因
-const showRejectReason = async (noteId) => {
+const getReviewTypeLabel = (type) => {
+  const map = {
+    SUBMIT: '提交审核',
+    RESUBMIT: '重新提交',
+    MANUAL_APPROVE: '审核通过',
+    MANUAL_REJECT: '审核拒绝',
+    AI_SUGGESTION: 'AI 建议'
+  }
+  return map[type] || type || '审核记录'
+}
+
+const showReviewHistory = async (noteId) => {
   try {
     const res = await getNoteReviewLog(noteId)
     if (res && res.success) {
-      const rejectLog = (res.result || []).find(item => item.reviewType === 'MANUAL_REJECT')
-      rejectReasonText.value = rejectLog ? rejectLog.rejectReason : '暂无详细原因'
+      reviewHistory.value = res.result || []
       rejectDialogVisible.value = true
     } else {
-      ElMessage.error('获取拒绝原因失败')
+      ElMessage.error('获取审核记录失败')
     }
   } catch (e) {
     ElMessage.error('网络异常')
@@ -561,6 +675,8 @@ onMounted(() => {
   loadMyUploads()
   loadMyFavorites()
   loadMyPosts()
+  loadMyComments()
+  loadNotifications()
 })
 </script>
 
@@ -615,4 +731,7 @@ onMounted(() => {
 
 .profile-tabs { background: #fff; padding: 20px; border-radius: 8px; }
 .tab-content h3 { margin-top: 0; margin-bottom: 16px; border-left: 4px solid #409EFF; padding-left: 10px; }
+.history-title { font-weight: 600; color: #303133; }
+.history-body { white-space: pre-wrap; margin-top: 6px; color: #606266; }
+.history-meta { margin-top: 6px; font-size: 12px; color: #909399; }
 </style>

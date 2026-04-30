@@ -126,6 +126,9 @@
           </el-form-item>
 
           <el-form-item label="封面图片（可选）">
+            <div v-if="form.coverUrl && !form.coverFile" class="existing-file">
+              当前封面：<el-link :href="form.coverUrl" target="_blank" type="primary">查看</el-link>
+            </div>
             <el-upload
               class="cover-upload"
               action="#"
@@ -144,6 +147,9 @@
           </el-form-item>
 
           <el-form-item label="上传文件 (PDF/MP4/DOCX/ZIP)">
+            <div v-if="form.fileUrl && !form.file" class="existing-file">
+              当前文件：<el-link :href="form.fileUrl" target="_blank" type="primary">查看</el-link>
+            </div>
             <el-upload
               class="upload-demo"
               drag
@@ -165,7 +171,12 @@
           </el-form-item>
 
           <el-form-item>
-            <el-button type="primary" class="submit-btn" @click="onSubmit" :loading="uploading">立即发布</el-button>
+            <div class="actions">
+              <el-button @click="saveDraft" :loading="savingDraft">保存草稿</el-button>
+              <el-button type="primary" @click="onSubmit" :loading="uploading">
+                {{ form.id ? '提交审核' : '立即发布' }}
+              </el-button>
+            </div>
           </el-form-item>
         </el-form>
       </el-card>
@@ -178,14 +189,16 @@ import { reactive, ref, onMounted } from 'vue'
 import { UploadFilled, Plus } from '@element-plus/icons-vue'
 import NavBar from '../../components/NavBar.vue'
 import { ElMessage } from 'element-plus'
-import { useRouter } from 'vue-router'
-import { addNote } from '@/api/note'
+import { useRoute, useRouter } from 'vue-router'
+import { addNote, getMyNoteDetail, updateNote } from '@/api/note'
 import { getSchoolList } from '@/api/school'
 import { getUserInfo as getStoredUserInfo } from '@/utils/auth'
 import request from '@/utils/request'
 
 const router = useRouter()
+const route = useRoute()
 const uploading = ref(false)
+const savingDraft = ref(false)
 const schoolLoading = ref(false)
 const schoolOptions = ref([])
 const customTagInput = ref('')
@@ -195,10 +208,13 @@ const courseRelatedTags = ['数据结构', '算法', '操作系统', '计算机�
 const contentTypeTags = ['课堂笔记', '实验报告', '学习心得', '编程实践', '项目经验', '论文写作', '思维导图', '公式整理', '代码示例']
 
 const form = reactive({
+  id: '',
   title: '',
   category: '',
   school: '',
   summary: '',
+  coverUrl: '',
+  fileUrl: '',
   coverFile: null,
   tags: [],
   file: null
@@ -265,6 +281,24 @@ const initSchool = () => {
   }
 }
 
+const loadEditNote = async () => {
+  const id = route.query.id
+  if (!id) return
+  const res = await getMyNoteDetail(id)
+  if (res && res.success) {
+    const note = res.result
+    form.id = note.id
+    form.title = note.title || ''
+    form.category = note.category || ''
+    form.school = note.school || ''
+    form.summary = note.summary || ''
+    form.coverUrl = note.coverUrl || ''
+    form.fileUrl = note.fileUrl || ''
+    form.tags = note.tags ? note.tags.split(',').filter(Boolean) : []
+    if (form.school && !schoolOptions.value.includes(form.school)) schoolOptions.value = [form.school]
+  }
+}
+
 const uploadFile = async (file) => {
   const formData = new FormData()
   formData.append('file', file)
@@ -324,31 +358,31 @@ const beforeUpload = (file) => {
   return true
 }
 
-const onSubmit = async () => {
-  if (!form.title || !form.title.trim()) {
+const saveNote = async (submit) => {
+  if (submit && (!form.title || !form.title.trim())) {
     return ElMessage.warning('请输入笔记标题')
   }
-  if (!form.category) {
+  if (submit && !form.category) {
     return ElMessage.warning('请选择课程分类')
   }
-  if (!form.file) {
+  if (submit && !form.file && !form.fileUrl) {
     return ElMessage.warning('请上传文件')
   }
 
-  uploading.value = true
+  const loadingRef = submit ? uploading : savingDraft
+  loadingRef.value = true
   
   try {
-    console.log('开始上传文件:', form.file.name)
-    const fileRes = await uploadFile(form.file)
-    
-    if (!fileRes || !fileRes.success) {
-      throw new Error(fileRes?.message || '文件上传失败')
+    let fileUrl = form.fileUrl
+    if (form.file) {
+      const fileRes = await uploadFile(form.file)
+      if (!fileRes || !fileRes.success) {
+        throw new Error(fileRes?.message || '文件上传失败')
+      }
+      fileUrl = fileRes.result.url
     }
-    
-    console.log('文件上传成功:', fileRes.result.url)
 
-    // 上传封面图片（如果有）
-    let coverUrl = ''
+    let coverUrl = form.coverUrl
     if (form.coverFile) {
       const coverRes = await uploadFile(form.coverFile)
       if (coverRes && coverRes.success) {
@@ -356,38 +390,42 @@ const onSubmit = async () => {
       }
     }
 
-
     const noteData = {
       title: form.title,
       category: form.category,
       school: form.school || '',
       summary: form.summary || '',
-      fileUrl: fileRes.result.url,
+      fileUrl,
       coverUrl: coverUrl,
       tags: form.tags.join(',')
     }
     
-    console.log('提交笔记数据:', noteData)
-    const res = await addNote(noteData)
+    const res = form.id
+      ? await updateNote(form.id, noteData, submit)
+      : await addNote(noteData, submit)
     
     if (res && res.success) {
-      ElMessage.success(res.message || '发布成功！')
+      ElMessage.success(res.message || (submit ? '已提交审核' : '草稿已保存'))
       setTimeout(() => {
-        router.push('/home')
+        router.push('/my-uploads')
       }, 1000)
     } else {
-      ElMessage.error(res.message || '发布失败')
+      ElMessage.error(res.message || '保存失败')
     }
   } catch (error) {
-    console.error('发布笔记错误:', error)
-    ElMessage.error(error.message || '发布失败，请稍后重试')
+    console.error('保存笔记错误:', error)
+    ElMessage.error(error.message || '保存失败，请稍后重试')
   } finally {
-    uploading.value = false
+    loadingRef.value = false
   }
 }
 
-onMounted(() => {
+const onSubmit = () => saveNote(true)
+const saveDraft = () => saveNote(false)
+
+onMounted(async () => {
   initSchool()
+  await loadEditNote()
 })
 </script>
 
@@ -395,7 +433,8 @@ onMounted(() => {
 .page-container { min-height: 100vh; background: #f5f7fa; }
 .main-content { max-width: 800px; margin: 30px auto; padding: 0 20px; }
 .card-header { font-size: 18px; font-weight: bold; display: flex; align-items: center; gap: 8px; }
-.submit-btn { width: 100%; margin-top: 20px; }
+.actions { width: 100%; display: flex; justify-content: flex-end; gap: 12px; margin-top: 20px; }
+.existing-file { margin-bottom: 10px; color: #606266; font-size: 13px; }
 .cover-upload :deep(.el-upload--picture-card) { width: 200px; height: 120px; }
 .cover-upload :deep(.el-upload-list__item) { width: 200px; height: 120px; }
 

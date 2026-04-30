@@ -56,6 +56,10 @@ public class Post implements Serializable {
      */
     private Integer replyCount;
 
+    private Integer pinned;
+
+    private Date pinnedTime;
+
     /**
      * 状态 (1:正常 0:已删除)
      */

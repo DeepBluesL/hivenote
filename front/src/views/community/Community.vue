@@ -45,6 +45,7 @@
                 <div class="post-body">
                   <div class="post-title-row">
                     <span class="post-rank" :class="{ 'post-rank-hot': index < 3 }">{{ index + 1 }}</span>
+                    <el-tag v-if="post.pinned === 1" type="danger" size="small">置顶</el-tag>
                     <span class="post-title">{{ post.title }}</span>
                   </div>
                   <div class="post-snippet">{{ post.content?.replace(/<[^>]+>/g, '').substring(0, 80) }}...</div>

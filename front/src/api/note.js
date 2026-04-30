@@ -2,7 +2,10 @@ import request from '../utils/request'
 
 export const getNoteList = (params) => request({ url: '/note/list', method: 'get', params })
 export const getNoteDetail = (id) => request({ url: `/note/detail/${id}`, method: 'get' })
-export const addNote = (data) => request({ url: '/note/add', method: 'post', data })
+export const getMyNoteDetail = (id) => request({ url: `/note/my/detail/${id}`, method: 'get' })
+export const addNote = (data, submit = true) => request({ url: '/note/add', method: 'post', data, params: { submit } })
+export const updateNote = (id, data, submit = true) => request({ url: `/note/update/${id}`, method: 'post', data, params: { submit } })
+export const deleteNote = (id) => request({ url: `/note/delete/${id}`, method: 'post' })
 export const addDownloadCount = (id) => request({ url: `/note/download/${id}`, method: 'post' })
 export const uploadFile = (formData) => request({ url: '/file/upload', method: 'post', data: formData, headers: { 'Content-Type': 'multipart/form-data' } })
 export const getAdminNoteList = (params) => request({ url: '/note/admin/list', method: 'get', params })

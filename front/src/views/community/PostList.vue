@@ -39,7 +39,10 @@
               {{ (post.nickname || 'U').charAt(0) }}
             </el-avatar>
             <div class="post-info">
-              <div class="post-title">{{ post.title }}</div>
+              <div class="post-title">
+                <el-tag v-if="post.pinned === 1" type="danger" size="small" class="pin-tag">置顶</el-tag>
+                <span>{{ post.title }}</span>
+              </div>
               <div class="post-snippet">{{ post.content?.substring(0, 120) }}...</div>
               <div class="post-meta">
                 <span class="post-author">{{ post.nickname || '匿名' }}</span>
@@ -144,7 +147,9 @@ onMounted(() => loadPosts())
 
 .post-row { display: flex; gap: 14px; align-items: flex-start; }
 .post-info { flex: 1; min-width: 0; }
-.post-title { font-size: 16px; font-weight: 600; color: #1d2129; margin-bottom: 6px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.post-title { display: flex; align-items: center; gap: 6px; font-size: 16px; font-weight: 600; color: #1d2129; margin-bottom: 6px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.post-title span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pin-tag { flex-shrink: 0; }
 .post-snippet { font-size: 13px; color: #86909c; line-height: 1.5; margin-bottom: 8px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .post-meta { display: flex; align-items: center; gap: 12px; font-size: 12px; color: #c0c4cc; flex-wrap: wrap; }
 .post-author { color: #606266; font-weight: 500; }

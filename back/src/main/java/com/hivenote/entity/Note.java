@@ -95,7 +95,7 @@ public class Note implements Serializable {
     private Integer examFeatured;
 
     /**
-     * 状态 (1:正常 0:审核中)
+     * 状态 (0:审核中 1:正常 2:已拒绝 3:草稿)
      */
     private Integer status;
 

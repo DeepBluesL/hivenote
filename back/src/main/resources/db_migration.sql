@@ -35,3 +35,46 @@ CREATE TABLE IF NOT EXISTS t_notification (
   INDEX idx_user_id (user_id),
   INDEX idx_user_read (user_id, is_read)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='系统通知表';
+
+-- 8. 创建笔记审核记录表
+CREATE TABLE IF NOT EXISTS t_note_review (
+  id BIGINT AUTO_INCREMENT PRIMARY KEY,
+  note_id VARCHAR(32) NOT NULL COMMENT '笔记ID',
+  reviewer VARCHAR(64) DEFAULT '' COMMENT '审核人或提交人',
+  review_type VARCHAR(32) DEFAULT '' COMMENT '审核记录类型',
+  ai_suggestion TEXT COMMENT 'AI审核建议',
+  reject_reason VARCHAR(1000) DEFAULT '' COMMENT '拒绝原因',
+  status INT DEFAULT 0 COMMENT '状态 0未读 1已读',
+  create_time DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  INDEX idx_note_id (note_id),
+  INDEX idx_create_time (create_time)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='笔记审核记录表';
+
+-- 9. Community interaction enhancements
+ALTER TABLE t_post ADD COLUMN pinned INT DEFAULT 0 COMMENT '是否置顶 0否 1是';
+ALTER TABLE t_post ADD COLUMN pinned_time DATETIME NULL COMMENT '置顶时间';
+
+CREATE TABLE IF NOT EXISTS t_post_like (
+  id BIGINT PRIMARY KEY,
+  post_id BIGINT NOT NULL COMMENT '帖子ID',
+  user_id BIGINT NOT NULL COMMENT '用户ID',
+  create_time DATETIME DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY uk_post_user (post_id, user_id),
+  INDEX idx_user_id (user_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='帖子点赞记录表';
+
+CREATE TABLE IF NOT EXISTS t_report (
+  id BIGINT PRIMARY KEY,
+  target_type VARCHAR(30) NOT NULL COMMENT '举报对象类型',
+  target_id VARCHAR(64) NOT NULL COMMENT '举报对象ID',
+  reporter_id BIGINT NOT NULL COMMENT '举报人ID',
+  reporter_name VARCHAR(100) DEFAULT '' COMMENT '举报人',
+  reason VARCHAR(1000) DEFAULT '' COMMENT '举报原因',
+  status INT DEFAULT 0 COMMENT '状态 0待处理 1已通过 2已驳回',
+  handler VARCHAR(100) DEFAULT '' COMMENT '处理人',
+  handle_result VARCHAR(1000) DEFAULT '' COMMENT '处理说明',
+  create_time DATETIME DEFAULT CURRENT_TIMESTAMP,
+  handle_time DATETIME NULL,
+  INDEX idx_status_time (status, create_time),
+  INDEX idx_target (target_type, target_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='内容举报表';

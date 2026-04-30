@@ -19,6 +19,11 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/note")
 public class NoteController {
 
+    private static final int STATUS_PENDING = 0;
+    private static final int STATUS_APPROVED = 1;
+    private static final int STATUS_REJECTED = 2;
+    private static final int STATUS_DRAFT = 3;
+
     @Autowired
     private INoteService noteService;
 
@@ -117,6 +122,7 @@ public class NoteController {
     public Result<Note> getDetail(@PathVariable String id) {
         Note note = noteService.getById(id);
         if (note == null) return Result.error("笔记不存在");
+        if (note.getStatus() == null || note.getStatus() != STATUS_APPROVED) return Result.error(403, "笔记暂不可查看");
         Integer viewCount = note.getViewCount() != null ? note.getViewCount() : 0;
         note.setViewCount(viewCount + 1);
         noteService.updateById(note);
@@ -124,12 +130,18 @@ public class NoteController {
     }
 
     @PostMapping("/add")
-    public Result<Object> add(@RequestBody Note note, @RequestHeader("accessToken") String token) {
+    public Result<Object> add(@RequestBody Note note,
+                              @RequestParam(defaultValue = "true") boolean submit,
+                              @RequestHeader("accessToken") String token) {
         User currentUser = UserController.sessionMap.get(token);
         if (currentUser == null) return Result.error(401, "请先登录");
-        if (StrUtil.isBlank(note.getTitle())) return Result.error("标题不能为空");
-        if (StrUtil.isBlank(note.getCategory())) return Result.error("分类不能为空");
-        if (StrUtil.isBlank(note.getFileUrl())) return Result.error("文件不能为空");
+        if (submit) {
+            if (StrUtil.isBlank(note.getTitle())) return Result.error("标题不能为空");
+            if (StrUtil.isBlank(note.getCategory())) return Result.error("分类不能为空");
+            if (StrUtil.isBlank(note.getFileUrl())) return Result.error("文件不能为空");
+        } else if (StrUtil.isBlank(note.getTitle())) {
+            note.setTitle("未命名草稿");
+        }
 
         note.setId(cn.hutool.core.util.IdUtil.getSnowflakeNextIdStr());
         note.setCreateBy(currentUser.getUsername());
@@ -140,13 +152,65 @@ public class NoteController {
         note.setFavoriteCount(0);
         note.setFeatured(0);
         note.setExamFeatured(0);
-        note.setStatus(0);
+        note.setStatus(submit ? STATUS_PENDING : STATUS_DRAFT);
         note.setDelFlag(0);
         note.setCreateTime(new java.util.Date());
         if (note.getTags() == null) note.setTags("");
 
         boolean saved = noteService.save(note);
-        return saved ? Result.success("发布成功") : Result.error("发布失败");
+        if (saved && submit) saveReview(note.getId(), currentUser.getUsername(), "SUBMIT", null, null);
+        return saved ? Result.success(note.getId(), submit ? "已提交审核" : "草稿已保存") : Result.error("保存失败");
+    }
+
+    @GetMapping("/my/detail/{id}")
+    public Result<Note> getMyDetail(@PathVariable String id, @RequestHeader("accessToken") String token) {
+        User currentUser = UserController.sessionMap.get(token);
+        if (currentUser == null) return Result.error(401, "请先登录");
+        Note note = noteService.getById(id);
+        if (note == null) return Result.error("笔记不存在");
+        if (!currentUser.getUsername().equals(note.getCreateBy())) return Result.error(403, "无权查看");
+        return Result.success(note);
+    }
+
+    @PostMapping("/update/{id}")
+    public Result<Object> update(@PathVariable String id,
+                                 @RequestBody Note input,
+                                 @RequestParam(defaultValue = "true") boolean submit,
+                                 @RequestHeader("accessToken") String token) {
+        User currentUser = UserController.sessionMap.get(token);
+        if (currentUser == null) return Result.error(401, "请先登录");
+        Note note = noteService.getById(id);
+        if (note == null) return Result.error("笔记不存在");
+        if (!currentUser.getUsername().equals(note.getCreateBy())) return Result.error(403, "无权修改");
+        if (note.getStatus() != null && note.getStatus() == STATUS_APPROVED) return Result.error("已通过笔记暂不支持重新编辑");
+        Integer oldStatus = note.getStatus();
+
+        if (submit) {
+            if (StrUtil.isBlank(input.getTitle())) return Result.error("标题不能为空");
+            if (StrUtil.isBlank(input.getCategory())) return Result.error("分类不能为空");
+            if (StrUtil.isBlank(input.getFileUrl()) && StrUtil.isBlank(note.getFileUrl())) return Result.error("文件不能为空");
+        } else if (StrUtil.isBlank(input.getTitle())) {
+            input.setTitle("未命名草稿");
+        }
+
+        note.setTitle(input.getTitle());
+        note.setCategory(input.getCategory());
+        note.setSummary(input.getSummary());
+        note.setSchool(StrUtil.isBlank(input.getSchool()) ? currentUser.getSchool() : input.getSchool());
+        note.setTags(input.getTags() == null ? "" : input.getTags());
+        if (StrUtil.isNotBlank(input.getFileUrl())) note.setFileUrl(input.getFileUrl());
+        if (input.getCoverUrl() != null) note.setCoverUrl(input.getCoverUrl());
+        note.setStatus(submit ? STATUS_PENDING : STATUS_DRAFT);
+        note.setUpdateBy(currentUser.getUsername());
+        note.setUpdateTime(new java.util.Date());
+
+        boolean saved = noteService.updateById(note);
+        if (saved && submit) {
+            String reviewType = oldStatus != null && oldStatus == STATUS_REJECTED ? "RESUBMIT" : "SUBMIT";
+            saveReview(id, currentUser.getUsername(), reviewType, null, null);
+        }
+        String message = submit && oldStatus != null && oldStatus == STATUS_REJECTED ? "已重新提交审核" : "已提交审核";
+        return saved ? Result.success(id, submit ? message : "草稿已保存") : Result.error("保存失败");
     }
 
     @GetMapping("/myList")
@@ -193,6 +257,7 @@ public class NoteController {
         Page<Note> pageParam = new Page<>(page, size);
         QueryWrapper<Note> qw = new QueryWrapper<>();
         if (status != null) qw.eq("status", status);
+        else qw.ne("status", STATUS_DRAFT);
         if (StrUtil.isNotBlank(category)) qw.eq("category", category);
         if (StrUtil.isNotBlank(title)) qw.like("title", title);
         qw.eq("del_flag", 0).orderByDesc("create_time");
@@ -206,10 +271,12 @@ public class NoteController {
         if (currentUser.getType() == null || currentUser.getType() != 1) return Result.error(403, "无权操作");
         Note note = noteService.getById(id);
         if (note == null) return Result.error("笔记不存在");
-        note.setStatus(1);
+        note.setStatus(STATUS_APPROVED);
         note.setUpdateBy(currentUser.getUsername());
         note.setUpdateTime(new java.util.Date());
-        return noteService.updateById(note) ? Result.success("审核通过") : Result.error("操作失败");
+        boolean saved = noteService.updateById(note);
+        if (saved) saveReview(id, currentUser.getUsername(), "MANUAL_APPROVE", null, null);
+        return saved ? Result.success("审核通过") : Result.error("操作失败");
     }
 
     /**
@@ -225,18 +292,13 @@ public class NoteController {
         Note note = noteService.getById(id);
         if (note == null) return Result.error("笔记不存在");
 
-        note.setStatus(2);
+        if (StrUtil.isBlank(reason)) return Result.error("拒绝原因不能为空");
+
+        note.setStatus(STATUS_REJECTED);
         note.setUpdateBy(currentUser.getUsername());
         note.setUpdateTime(new java.util.Date());
         noteService.updateById(note);
-
-        NoteReview review = new NoteReview();
-        review.setNoteId(id);
-        review.setReviewer(currentUser.getUsername());
-        review.setReviewType("MANUAL_REJECT");
-        review.setRejectReason(reason);
-        review.setStatus(0);
-        noteReviewService.save(review);
+        saveReview(id, currentUser.getUsername(), "MANUAL_REJECT", null, reason);
 
         return Result.success("已拒绝笔记，并已生成拒绝报告");
     }
@@ -325,13 +387,7 @@ public class NoteController {
         }
 
         // 保存审核记录
-        NoteReview review = new NoteReview();
-        review.setNoteId(noteId);
-        review.setReviewer(currentUser.getUsername());
-        review.setReviewType("AI_SUGGESTION");
-        review.setAiSuggestion(suggestion);
-        review.setStatus(0);
-        noteReviewService.save(review);
+        saveReview(noteId, currentUser.getUsername(), "AI_SUGGESTION", suggestion, null);
 
         return Result.success(suggestion);
     }
@@ -353,5 +409,17 @@ public class NoteController {
         QueryWrapper<NoteReview> qw = new QueryWrapper<>();
         qw.eq("note_id", noteId).orderByDesc("create_time");
         return Result.success(noteReviewService.list(qw));
+    }
+
+    private void saveReview(String noteId, String reviewer, String type, String aiSuggestion, String rejectReason) {
+        NoteReview review = new NoteReview();
+        review.setNoteId(noteId);
+        review.setReviewer(reviewer);
+        review.setReviewType(type);
+        review.setAiSuggestion(aiSuggestion);
+        review.setRejectReason(rejectReason);
+        review.setStatus(0);
+        review.setCreateTime(new java.util.Date());
+        noteReviewService.save(review);
     }
 }

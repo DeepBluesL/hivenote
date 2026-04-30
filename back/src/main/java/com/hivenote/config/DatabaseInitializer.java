@@ -76,6 +76,8 @@ public class DatabaseInitializer implements CommandLineRunner {
                     "  view_count INT DEFAULT 0 COMMENT '浏览量'," +
                     "  like_count INT DEFAULT 0 COMMENT '点赞数'," +
                     "  reply_count INT DEFAULT 0 COMMENT '回复数'," +
+                    "  pinned INT DEFAULT 0 COMMENT '是否置顶 0否 1是'," +
+                    "  pinned_time DATETIME NULL COMMENT '置顶时间'," +
                     "  status INT DEFAULT 1 COMMENT '状态 1正常 0删除'," +
                     "  create_time DATETIME DEFAULT CURRENT_TIMESTAMP," +
                     "  update_time DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP," +
@@ -84,6 +86,10 @@ public class DatabaseInitializer implements CommandLineRunner {
                     ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='讨论帖子表'"
             );
             System.out.println("[OK] t_post 表已就绪");
+            addColumnIfNotExists(conn, stmt, "t_post", "pinned",
+                    "ALTER TABLE t_post ADD COLUMN pinned INT DEFAULT 0 COMMENT '是否置顶 0否 1是'");
+            addColumnIfNotExists(conn, stmt, "t_post", "pinned_time",
+                    "ALTER TABLE t_post ADD COLUMN pinned_time DATETIME NULL COMMENT '置顶时间'");
 
             // 创建 t_post_reply 帖子回复表
             stmt.executeUpdate(
@@ -101,6 +107,54 @@ public class DatabaseInitializer implements CommandLineRunner {
                     ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='帖子回复表'"
             );
             System.out.println("[OK] t_post_reply 表已就绪");
+
+            stmt.executeUpdate(
+                    "CREATE TABLE IF NOT EXISTS t_post_like (" +
+                    "  id BIGINT PRIMARY KEY," +
+                    "  post_id BIGINT NOT NULL COMMENT '帖子ID'," +
+                    "  user_id BIGINT NOT NULL COMMENT '用户ID'," +
+                    "  create_time DATETIME DEFAULT CURRENT_TIMESTAMP," +
+                    "  UNIQUE KEY uk_post_user (post_id, user_id)," +
+                    "  INDEX idx_user_id (user_id)" +
+                    ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='帖子点赞记录表'"
+            );
+            System.out.println("[OK] t_post_like 表已就绪");
+
+            stmt.executeUpdate(
+                    "CREATE TABLE IF NOT EXISTS t_report (" +
+                    "  id BIGINT PRIMARY KEY," +
+                    "  target_type VARCHAR(30) NOT NULL COMMENT '举报对象类型'," +
+                    "  target_id VARCHAR(64) NOT NULL COMMENT '举报对象ID'," +
+                    "  reporter_id BIGINT NOT NULL COMMENT '举报人ID'," +
+                    "  reporter_name VARCHAR(100) DEFAULT '' COMMENT '举报人'," +
+                    "  reason VARCHAR(1000) DEFAULT '' COMMENT '举报原因'," +
+                    "  status INT DEFAULT 0 COMMENT '状态 0待处理 1已通过 2已驳回'," +
+                    "  handler VARCHAR(100) DEFAULT '' COMMENT '处理人'," +
+                    "  handle_result VARCHAR(1000) DEFAULT '' COMMENT '处理说明'," +
+                    "  create_time DATETIME DEFAULT CURRENT_TIMESTAMP," +
+                    "  handle_time DATETIME NULL," +
+                    "  INDEX idx_status_time (status, create_time)," +
+                    "  INDEX idx_target (target_type, target_id)" +
+                    ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='内容举报表'"
+            );
+            System.out.println("[OK] t_report 表已就绪");
+
+            // 创建 t_note_review 审核记录表
+            stmt.executeUpdate(
+                    "CREATE TABLE IF NOT EXISTS t_note_review (" +
+                    "  id BIGINT AUTO_INCREMENT PRIMARY KEY," +
+                    "  note_id VARCHAR(32) NOT NULL COMMENT '笔记ID'," +
+                    "  reviewer VARCHAR(64) DEFAULT '' COMMENT '审核人或提交人'," +
+                    "  review_type VARCHAR(32) DEFAULT '' COMMENT '审核记录类型'," +
+                    "  ai_suggestion TEXT COMMENT 'AI审核建议'," +
+                    "  reject_reason VARCHAR(1000) DEFAULT '' COMMENT '拒绝原因'," +
+                    "  status INT DEFAULT 0 COMMENT '状态 0未读 1已读'," +
+                    "  create_time DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间'," +
+                    "  INDEX idx_note_id (note_id)," +
+                    "  INDEX idx_create_time (create_time)" +
+                    ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='笔记审核记录表'"
+            );
+            System.out.println("[OK] t_note_review 表已就绪");
 
             System.out.println("=== 数据库自动迁移完成 ===");
 

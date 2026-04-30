@@ -14,6 +14,8 @@
               <div class="post-date">{{ formatFullDate(post.createTime) }}</div>
             </div>
             <div class="post-header-actions">
+              <el-button v-if="isAdmin" link type="primary" @click="handlePin">{{ post.pinned === 1 ? '取消置顶' : '置顶' }}</el-button>
+              <el-button link type="info" @click="handleReportPost">举报</el-button>
               <el-button v-if="isAuthor" link type="warning" @click="router.push(`/community/post/edit/${post.id}`)">编辑</el-button>
               <el-button v-if="canDelete" link type="danger" @click="handleDelete">删除</el-button>
             </div>
@@ -84,6 +86,11 @@
                     style="margin-left: auto"
                     @click="handleDeleteReply(reply)"
                   >删除</el-button>
+                  <el-button
+                    link type="info" size="small"
+                    :style="{ marginLeft: canDeleteReply(reply) ? '0' : 'auto' }"
+                    @click="handleReportReply(reply)"
+                  >举报</el-button>
                 </div>
                 <div class="reply-text" :class="{ 'admin-text': reply.userType === 1 }">{{ reply.content }}</div>
               </div>
@@ -105,7 +112,8 @@ import { useRouter, useRoute } from 'vue-router'
 import NavBar from '../../components/NavBar.vue'
 import { View, ChatDotRound } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { getPostDetail, likePost, deletePost, getPostReplies, addPostReply, deletePostReply } from '@/api/post'
+import { getPostDetail, likePost, getPostLiked, pinPost, deletePost, getPostReplies, addPostReply, deletePostReply } from '@/api/post'
+import { addReport } from '@/api/report'
 import { getUserInfo as getStoredUserInfo } from '@/utils/auth'
 
 const router = useRouter()
@@ -137,6 +145,8 @@ const canDelete = computed(() => {
   return isAuthor.value || isAdmin
 })
 
+const isAdmin = computed(() => currentUser.value?.type === 1)
+
 const canDeleteReply = (reply) => {
   if (!currentUser.value?.id) return false
   const isAuthor = String(reply.userId) === String(currentUser.value.id)
@@ -167,6 +177,10 @@ const loadPost = async () => {
     const res = await getPostDetail(route.params.id)
     if (res && res.success) {
       post.value = res.result
+      const likedRes = await getPostLiked(route.params.id)
+      if (likedRes && likedRes.success) {
+        hasLiked.value = !!likedRes.result?.liked
+      }
     }
   } catch (e) {
     console.error(e)
@@ -185,17 +199,45 @@ const loadReplies = async () => {
 }
 
 const handleLike = async () => {
-  if (hasLiked.value) return
   try {
     const res = await likePost(post.value.id)
     if (res && res.success) {
-      post.value.likeCount = res.result
-      hasLiked.value = true
+      hasLiked.value = !!res.result?.liked
+      post.value.likeCount = res.result?.likeCount ?? post.value.likeCount
     }
   } catch (e) {
     ElMessage.error('请先登录')
   }
 }
+
+const handlePin = async () => {
+  const next = post.value.pinned === 1 ? 0 : 1
+  const res = await pinPost(post.value.id, next)
+  if (res && res.success) {
+    post.value.pinned = next
+    ElMessage.success(next === 1 ? '已置顶' : '已取消置顶')
+  }
+}
+
+const submitReport = async (targetType, targetId) => {
+  try {
+    const { value } = await ElMessageBox.prompt('请填写举报原因', '举报', {
+      confirmButtonText: '提交',
+      cancelButtonText: '取消',
+      inputType: 'textarea',
+      inputValidator: (v) => !!v?.trim() || '举报原因不能为空'
+    })
+    const res = await addReport({ targetType, targetId, reason: value.trim() })
+    if (res && res.success) {
+      ElMessage.success('举报已提交')
+    }
+  } catch (e) {
+    if (e !== 'cancel') ElMessage.error('举报失败')
+  }
+}
+
+const handleReportPost = () => submitReport('POST', post.value.id)
+const handleReportReply = (reply) => submitReport('POST_REPLY', reply.id)
 
 const handleDelete = async () => {
   try {
