@@ -29,6 +29,12 @@ public class DatabaseInitializer implements CommandLineRunner {
             addColumnIfNotExists(conn, stmt, "a_user", "avatar_banned",
                     "ALTER TABLE a_user ADD COLUMN avatar_banned INT DEFAULT 0 COMMENT '头像是否被封禁 0正常 1封禁'");
 
+            // a_user table: Google login fields
+            addColumnIfNotExists(conn, stmt, "a_user", "google_id",
+                    "ALTER TABLE a_user ADD COLUMN google_id VARCHAR(255) DEFAULT NULL COMMENT 'Google account id'");
+            addColumnIfNotExists(conn, stmt, "a_user", "google_email",
+                    "ALTER TABLE a_user ADD COLUMN google_email VARCHAR(255) DEFAULT NULL COMMENT 'Google email'");
+
             // t_note 表: tags, featured, exam_featured
             addColumnIfNotExists(conn, stmt, "t_note", "tags",
                     "ALTER TABLE t_note ADD COLUMN tags VARCHAR(500) DEFAULT '' COMMENT '标签，逗号分隔'");

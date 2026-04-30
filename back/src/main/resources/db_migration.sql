@@ -18,6 +18,11 @@ ALTER TABLE t_comment ADD COLUMN user_type INT DEFAULT 0 COMMENT '评论人类�
 -- 5. a_user 表：添加 avatar_banned 字段
 ALTER TABLE a_user ADD COLUMN avatar_banned INT DEFAULT 0 COMMENT '头像是否被封禁 0正常 1封禁';
 
+-- 7. a_user table: add Google login fields
+ALTER TABLE a_user ADD COLUMN google_id VARCHAR(255) DEFAULT NULL COMMENT 'Google account id';
+ALTER TABLE a_user ADD COLUMN google_email VARCHAR(255) DEFAULT NULL COMMENT 'Google email';
+CREATE INDEX idx_google_id ON a_user (google_id);
+
 -- 6. 创建通知表
 CREATE TABLE IF NOT EXISTS t_notification (
   id BIGINT PRIMARY KEY,

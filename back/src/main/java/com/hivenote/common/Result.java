@@ -129,12 +129,12 @@ public class Result<T> implements Serializable {
     }
 
     /**
-     * 失败 - 默认 code 500
+     * 失败 - 默认 code 400
      */
     public static <T> Result<T> error(String msg) {
         Result<T> r = new Result<>();
         r.setSuccess(false);
-        r.setCode(500);
+        r.setCode(400);
         r.setMessage(msg);
         return r;
     }

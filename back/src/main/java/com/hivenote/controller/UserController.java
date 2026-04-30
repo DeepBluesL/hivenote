@@ -23,6 +23,7 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 @RestController
 public class UserController {
@@ -45,7 +46,7 @@ public class UserController {
     @Value("${google.frontend-url}")
     private String frontendUrl;
 
-    public static Map<String, User> sessionMap = new HashMap<>();
+    public static Map<String, User> sessionMap = new ConcurrentHashMap<>();
 
     private Map<String, Object> buildUserInfoMap(User user) {
         Map<String, Object> info = new HashMap<>();
@@ -62,6 +63,18 @@ public class UserController {
         info.put("avatarBanned", user.getAvatarBanned() != null ? user.getAvatarBanned() : 0);
         info.put("createTime", user.getCreateTime());
         return info;
+    }
+
+    private void upgradePasswordIfRequired(User user, String rawPassword) {
+        if (PasswordUtil.needsRehash(user.getPassword())) {
+            user.setPassword(PasswordUtil.encrypt(rawPassword));
+            userService.updateById(user);
+        }
+    }
+
+    private void putSessionUser(String token, User user) {
+        user.setPassword(null);
+        sessionMap.put(token, user);
     }
 
     /**
@@ -97,9 +110,11 @@ public class UserController {
             return Result.error("账号已被禁用，请联系管理员");
         }
 
+        upgradePasswordIfRequired(user, loginUser.getPassword());
+
         // 生成 Token (使用 Hutool 工具)
         String token = IdUtil.simpleUUID();
-        sessionMap.put(token, user); // 存入会话
+        putSessionUser(token, user); // 存入会话
 
         // 构造返回数据
         Map<String, Object> resultMap = new HashMap<>();
@@ -231,7 +246,7 @@ public class UserController {
         userService.updateById(user);
 
         // 更新会话中的用户信息
-        sessionMap.put(token, user);
+        putSessionUser(token, user);
 
         return Result.success("密码修改成功");
     }
@@ -271,7 +286,7 @@ public class UserController {
         userService.updateById(user);
 
         // 更新会话中的用户信息
-        sessionMap.put(token, user);
+        putSessionUser(token, user);
 
         // 返回更新后的用户信息，让前端同步
         Map<String, Object> userInfo = buildUserInfoMap(user);
@@ -428,9 +443,11 @@ public class UserController {
         System.out.println("管理员权限验证通过！");
         System.out.println("用户类型: " + user.getType());
 
+        upgradePasswordIfRequired(user, loginUser.getPassword());
+
         // 生成 Token
         String token = IdUtil.simpleUUID();
-        sessionMap.put(token, user);
+        putSessionUser(token, user);
 
         // 构造返回数据
         Map<String, Object> resultMap = new HashMap<>();
@@ -528,7 +545,7 @@ public class UserController {
 
             // 5. 生成 token 并存入 session
             String token = IdUtil.simpleUUID();
-            sessionMap.put(token, user);
+            putSessionUser(token, user);
 
             // 6. 重定向到前端，带上 token
             response.sendRedirect(frontendUrl + "/google-callback?token=" + token
@@ -562,7 +579,7 @@ public class UserController {
         user.setAvatarBanned(0);
         userService.updateById(user);
 
-        sessionMap.put(token, user);
+        putSessionUser(token, user);
 
         Map<String, String> result = new HashMap<>();
         result.put("avatar", avatarUrl);

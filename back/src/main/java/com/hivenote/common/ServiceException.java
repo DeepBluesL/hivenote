@@ -12,7 +12,7 @@ import lombok.EqualsAndHashCode;
 public class ServiceException extends RuntimeException {
 
     private String msg;
-    private Integer code = 500;
+    private Integer code = 400;
 
     public ServiceException(String msg) {
         super(msg);
@@ -21,6 +21,12 @@ public class ServiceException extends RuntimeException {
 
     public ServiceException(String msg, Throwable e) {
         super(msg, e);
+        this.msg = msg;
+    }
+
+    public ServiceException(Integer code, String msg) {
+        super(msg);
+        this.code = code;
         this.msg = msg;
     }
 }

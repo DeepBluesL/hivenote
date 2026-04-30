@@ -38,6 +38,9 @@ CREATE TABLE `a_user` (
   `school` varchar(255) DEFAULT NULL COMMENT '学校',
   `show_email` int DEFAULT '1' COMMENT '是否公开邮箱 0不公开 1公开',
   `show_student_id` int DEFAULT '1' COMMENT '是否公开学号 0不公开 1公开',
+  `avatar_banned` int DEFAULT '0' COMMENT 'Avatar ban flag',
+  `google_id` varchar(255) DEFAULT NULL COMMENT 'Google account id',
+  `google_email` varchar(255) DEFAULT NULL COMMENT 'Google email',
   `del_flag` int DEFAULT '0',
   `pass_strength` varchar(2) DEFAULT NULL,
   `create_by` varchar(255) DEFAULT NULL,
@@ -45,7 +48,8 @@ CREATE TABLE `a_user` (
   `update_by` varchar(255) DEFAULT NULL,
   `update_time` datetime(6) DEFAULT NULL,
   PRIMARY KEY (`id`),
-  UNIQUE KEY `username` (`username`) USING BTREE
+  UNIQUE KEY `username` (`username`) USING BTREE,
+  KEY `idx_google_id` (`google_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb3;
 
 /*Data for the table `a_user` */

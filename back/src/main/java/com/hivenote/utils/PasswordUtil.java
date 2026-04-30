@@ -1,30 +1,55 @@
 package com.hivenote.utils;
 
 import cn.hutool.crypto.SecureUtil;
+import cn.hutool.crypto.digest.BCrypt;
 
-/**
- * 密码工具类
- * 使用 MD5 加密密码（生产环境建议使用 BCrypt）
- */
+import java.util.regex.Pattern;
+
 public class PasswordUtil {
 
-    /**
-     * 加密密码
-     * @param password 明文密码
-     * @return 加密后的密码
-     */
-    public static String encrypt(String password) {
-        // 使用 Hutool 的 MD5 加密
-        return SecureUtil.md5(password);
+    private static final Pattern LEGACY_MD5_PATTERN = Pattern.compile("^[a-fA-F0-9]{32}$");
+    private static final int BCRYPT_COST = 12;
+
+    private PasswordUtil() {
     }
 
-    /**
-     * 验证密码
-     * @param inputPassword 用户输入的密码
-     * @param storedPassword 数据库存储的加密密码
-     * @return 是否匹配
-     */
+    public static String encrypt(String password) {
+        if (password == null) {
+            throw new IllegalArgumentException("Password cannot be null");
+        }
+        return BCrypt.hashpw(password, BCrypt.gensalt(BCRYPT_COST));
+    }
+
     public static boolean verify(String inputPassword, String storedPassword) {
-        return encrypt(inputPassword).equals(storedPassword);
+        if (inputPassword == null || storedPassword == null || storedPassword.isBlank()) {
+            return false;
+        }
+
+        if (isBcryptHash(storedPassword)) {
+            try {
+                return BCrypt.checkpw(inputPassword, storedPassword);
+            } catch (IllegalArgumentException e) {
+                return false;
+            }
+        }
+
+        if (isLegacyMd5Hash(storedPassword)) {
+            return SecureUtil.md5(inputPassword).equalsIgnoreCase(storedPassword);
+        }
+
+        return false;
+    }
+
+    public static boolean needsRehash(String storedPassword) {
+        return !isBcryptHash(storedPassword);
+    }
+
+    private static boolean isBcryptHash(String value) {
+        return value != null
+                && (value.startsWith("$2a$") || value.startsWith("$2b$") || value.startsWith("$2y$"));
+    }
+
+    private static boolean isLegacyMd5Hash(String value) {
+        return value != null && LEGACY_MD5_PATTERN.matcher(value).matches();
     }
 }
