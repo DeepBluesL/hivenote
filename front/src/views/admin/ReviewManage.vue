@@ -601,12 +601,48 @@ const loadUserList = async () => {
     userLoading.value = false
   }
 }
-const handleBanUser = async (row) => { /* 保持不变 */ }
-const handleUnbanUser = async (row) => { /* 保持不变 */ }
-const handleBanAvatar = async (row) => { /* 保持不变 */ }
-// 注意：上面三个方法因篇幅省略，实际覆盖时需保留完整逻辑，建议保留原代码不变，我们这里仅展示需要修改的部分，请手动合并
-// 完整管理页面非常长，为避免字符串过长，这里只给出核心改动部分，建议用上述命令覆盖完整文件，但需要把用户管理、评论管理的方法补全。
-// 请使用下面的完整文件覆盖方式
+const handleBanUser = async (row) => {
+  try {
+    await ElMessageBox.confirm(`确定要封禁用户 "${row.nickname || row.username}" 吗？封禁后该用户将无法登录。`, '封禁用户', { type: 'warning' })
+    const res = await banUser(row.id)
+    if (res && res.success) {
+      ElMessage.success('用户已封禁')
+      loadUserList()
+    } else {
+      ElMessage.error(res?.message || '操作失败')
+    }
+  } catch (error) {
+    if (error !== 'cancel') ElMessage.error('操作失败')
+  }
+}
+const handleUnbanUser = async (row) => {
+  try {
+    await ElMessageBox.confirm(`确定要解封用户 "${row.nickname || row.username}" 吗？`, '解封用户', { type: 'success' })
+    const res = await unbanUser(row.id)
+    if (res && res.success) {
+      ElMessage.success('用户已解封')
+      loadUserList()
+    } else {
+      ElMessage.error(res?.message || '操作失败')
+    }
+  } catch (error) {
+    if (error !== 'cancel') ElMessage.error('操作失败')
+  }
+}
+const handleBanAvatar = async (row) => {
+  try {
+    await ElMessageBox.confirm(`确定要封禁用户 "${row.nickname || row.username}" 的头像吗？头像将被重置为默认头像并向用户发送通知。`, '封禁头像', { type: 'warning' })
+    const res = await banAvatar(row.id)
+    if (res && res.success) {
+      ElMessage.success('头像已封禁')
+      loadUserList()
+    } else {
+      ElMessage.error(res?.message || '操作失败')
+    }
+  } catch (error) {
+    if (error !== 'cancel') ElMessage.error('操作失败')
+  }
+}
 
 // 举报处理
 const reportLoading = ref(false)
