@@ -157,5 +157,3 @@ hivenote/
 - Password recovery is a simulated frontend flow, not a working email recovery service.
 - Login sessions live in backend memory; restarting the backend signs users out.
 - The source currently contains embedded Google OAuth and DeepSeek credentials. Replace and rotate these credentials before deployment. The DeepSeek key is hardcoded in `NoteController`; no environment-based setting is implemented for it yet.
-- AI suggestions use metadata only and require a working external service credential. Administrators make the approval decision.
-- No license file is currently included in this repository.
